@@ -1,4 +1,3 @@
-#https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html
 import requests
 import json
 import datetime as dt
@@ -15,11 +14,10 @@ VERSION = os.getenv("VERSION")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+
 
 headers = {'User-Agent': f'{APP_NAME}/{VERSION} ({GITHUB_REPO}; {USER_WIKI})'}
 base_url_wiki = "https://wikimedia.org/api/rest_v1/metrics"
-base_url_news = "https://newsapi.org/v2/everything"
 
 # generating list of days in the last week in fromat YYYY/MM/DD
 today = dt.datetime.now().strftime("%Y/%m/%d")
@@ -30,7 +28,7 @@ country_list = ["IT"]
 query = "These are the trending Wikipedia articles from " + last_week[-1] + " to " + last_week[0] + ":\n"
 
 pages_to_exclude =  ["Main_Page", "Special:Search", "Pagina_principale", "Speciale:Ricerca", "Wikipedia:Hauptseite", "Spezial:Suche", "Wikipedia:Portada", "Especial:Buscar", "Wikipédia:Accueil_principal","Spécial:Recherche","Wikipedia:Featured pictures"]
-#query and merge data from all countries and days
+
 top_articles = {}
 for day in last_week:
     for country in country_list:
@@ -47,29 +45,9 @@ for day in last_week:
                     if i>=4: break
                 # else sum views if article already in list
                 else: top_articles[art['article']]+=art['views_ceil']
-
-            # n_articles = 0
-            # i=0
-            # while n_articles<=3:
-            #     article = top_articles[i]
-            #     i+=1
-            #     params = {'q': article['article'].replace('_', '+'),  # search query, substitute _ with +
-            #               'sortBy': 'publishedAt',
-            #               'pagesize': 3,
-            #               'page': 1,
-            #               'apiKey': NEWS_API_KEY
-            #               }
-            #     news_response = requests.get(base_url_news, params=params)
-            #     news_data = news_response.json()
-            #     if len(news_data['articles']) > 0:
-            #         n_articles += 1
-            #         query += f"titolo: {article['article'].replace('_', ' ')}\n"
-            #         query += f"views: {article['views_ceil']}\n"
-            #         query += f"news: {[news_article['description'] for news_article in news_data['articles']]}\n"
         else:
             print(f"No data available for {country} on {today}.")
 
-#top_articles = sorted(top_articles, key=lambda x: x['views_ceil'], reverse=True)[:3]
 top_articles = {k: v for k, v in sorted(top_articles.items(), key=lambda item: item[1], reverse=True)[:5]}
 for article in top_articles:
     query += f"titolo: {article.replace('_', ' ')}\n"

@@ -8,7 +8,6 @@
 
 - Fetches top viewed Wikipedia articles by country and date using Wikimedia's API.
 - Excludes generic or non-informative Wikipedia pages from results.
-- For each trending article, retrieves recent news headlines using NewsAPI.
 - Uses Google Gemini to generate a concise, Italian-language summary suitable for Telegram.
 - Automatically posts the summary to a specified Telegram channel.
 
@@ -20,7 +19,7 @@
 a_gent_parl/
 ├── .env                  # Environment variables (API keys, tokens, etc.)
 ├── .gitignore
-├── most_viewed_daily.py  # Main script: Wikipedia/news fetch, AI summary, Telegram post
+├── most_viewed_weekly.py  # Main script: Wikipedia/news fetch, AI summary, Telegram post
 ├── requirement.txt       # Python dependencies
 ├── tutorial.py           # Example: fetch top Wikipedia articles (simpler version)
 ├── wiki_sparsql_query.py # Example: SPARQL queries for Wikidata
@@ -53,7 +52,6 @@ a_gent_parl/
    GEMINI_API_KEY=your_gemini_api_key
    TELEGRAM_BOT_TOKEN=your_telegram_bot_token
    CHANNEL_ID=@your_channel_id
-   NEWS_API_KEY=your_newsapi_key
    ```
 
 ---
@@ -63,13 +61,12 @@ a_gent_parl/
 Run the main script to fetch, summarize, and post the daily Wikipedia trends:
 
 ```sh
-python most_viewed_daily.py
+python most_viewed_weekly.py
 ```
 
 - The script will:
-  - Fetch yesterday's top Wikipedia articles for Italy.
-  - For each article, find related news headlines.
-  - Use Gemini to generate a formatted summary in Italian.
+  - Fetch last week's top Wikipedia articles for Italy.
+  - For each article, use Gemini to generate a formatted summary in Italian.
   - Post the summary to your configured Telegram channel.
 
 ---
@@ -110,4 +107,3 @@ MIT License
 ## Credits
 
 - [Wikimedia REST API](https://wikimedia.org/api/rest_v1/)
-- [NewsAPI](https://newsapi.org/)
