@@ -20,45 +20,60 @@ NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 headers = {'User-Agent': f'{APP_NAME}/{VERSION} ({GITHUB_REPO}; {USER_WIKI})'}
 base_url_wiki = "https://wikimedia.org/api/rest_v1/metrics"
 base_url_news = "https://newsapi.org/v2/everything"
-today = (dt.datetime.now() - dt.timedelta(days=1)).strftime("%Y/%m/%d")
+
+# generating list of days in the last week in fromat YYYY/MM/DD
+today = dt.datetime.now().strftime("%Y/%m/%d")
+last_week = [(dt.datetime.now() - dt.timedelta(days=i)).strftime("%Y/%m/%d") for i in range(1, 8)]
 
 country_list = ["IT"]
 
-query = "These are the trending Wikipedia articles on " + today + ":\n"
+query = "These are the trending Wikipedia articles from " + last_week[-1] + " to " + last_week[0] + ":\n"
 
-pages_to_exclude =  ["Main_Page", "Special:Search", "Pagina_principale", "Speciale:Ricerca", "Wikipedia:Hauptseite", "Spezial:Suche", "Wikipedia:Portada", "Especial:Buscar", "Wikipédia:Accueil_principal","Spécial:Recherche"]
+pages_to_exclude =  ["Main_Page", "Special:Search", "Pagina_principale", "Speciale:Ricerca", "Wikipedia:Hauptseite", "Spezial:Suche", "Wikipedia:Portada", "Especial:Buscar", "Wikipédia:Accueil_principal","Spécial:Recherche","Wikipedia:Featured pictures"]
+#query and merge data from all countries and days
+top_articles = {}
+for day in last_week:
+    for country in country_list:
+        api_url = f"{base_url_wiki}/pageviews/top-per-country/{country}/all-access/{day}"
+        response = requests.get(api_url, headers=headers)
+        data = response.json()
+        if 'items' in data and len(data['items']) > 0:
+            data['items'][0]['articles'] = [article for article in data['items'][0]['articles'] if article['article'] not in pages_to_exclude]# and article['rank'] <= 10]       
+            i=0
+            for art in data['items'][0]['articles']:
+                if art['article'] not in top_articles: 
+                    top_articles[art['article']]=art['views_ceil']
+                    i+=1
+                    if i>=4: break
+                # else sum views if article already in list
+                else: top_articles[art['article']]+=art['views_ceil']
 
-#for project in projects_list:
-for country in country_list:
-    api_url = f"{base_url_wiki}/pageviews/top-per-country/{country}/all-access/{today}"
-    response = requests.get(api_url, headers=headers)
-    data = response.json()
-    if 'items' in data and len(data['items']) > 0:
-        data['items'][0]['articles'] = [article for article in data['items'][0]['articles'] if article['article'] not in pages_to_exclude]# and article['rank'] <= 10]
+            # n_articles = 0
+            # i=0
+            # while n_articles<=3:
+            #     article = top_articles[i]
+            #     i+=1
+            #     params = {'q': article['article'].replace('_', '+'),  # search query, substitute _ with +
+            #               'sortBy': 'publishedAt',
+            #               'pagesize': 3,
+            #               'page': 1,
+            #               'apiKey': NEWS_API_KEY
+            #               }
+            #     news_response = requests.get(base_url_news, params=params)
+            #     news_data = news_response.json()
+            #     if len(news_data['articles']) > 0:
+            #         n_articles += 1
+            #         query += f"titolo: {article['article'].replace('_', ' ')}\n"
+            #         query += f"views: {article['views_ceil']}\n"
+            #         query += f"news: {[news_article['description'] for news_article in news_data['articles']]}\n"
+        else:
+            print(f"No data available for {country} on {today}.")
 
-        top_articles = data['items'][0]['articles'][:15] 
-        n_articles = 0
-        i=0
-        while n_articles<=3:
-            article = top_articles[i]
-            i+=1
-            params = {'q': article['article'].replace('_', '+'),  # search query, substitute _ with +
-                      'sortBy': 'publishedAt',
-                      'pagesize': 3,
-                      'page': 1,
-                      'apiKey': NEWS_API_KEY
-                      }
-            news_response = requests.get(base_url_news, params=params)
-            news_data = news_response.json()
-            if len(news_data['articles']) > 0:
-                n_articles += 1
-                query += f"titolo: {article['article'].replace('_', ' ')}\n"
-                query += f"views: {article['views_ceil']}\n"
-                query += f"news: {[news_article['description'] for news_article in news_data['articles']]}\n"
-    else:
-        print(f"No data available for {country} on {today}.")
-
-
+#top_articles = sorted(top_articles, key=lambda x: x['views_ceil'], reverse=True)[:3]
+top_articles = {k: v for k, v in sorted(top_articles.items(), key=lambda item: item[1], reverse=True)[:5]}
+for article in top_articles:
+    query += f"titolo: {article.replace('_', ' ')}\n"
+    query += f"views: {top_articles[article]}\n\n"
 
 system_instruction = """
   You are an AI assistant specialized in summarizing news articles and generating content for social media in ITALIAN.
@@ -79,8 +94,15 @@ system_instruction = """
   Do not include any other text or explanation.
 """
 
+# Define the grounding tool
+grounding_tool = types.Tool(
+    google_search=types.GoogleSearch()
+)
+
+# Configure generation settings
 chat_config = types.GenerateContentConfig(
     system_instruction=system_instruction,
+    tools=[grounding_tool]
 )
 
 gemini = genai.Client(api_key=GEMINI_API_KEY)
