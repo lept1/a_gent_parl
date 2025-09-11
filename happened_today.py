@@ -3,6 +3,7 @@
 
 import sys
 import os
+import io
 from SPARQLWrapper import SPARQLWrapper, JSON
 from dotenv import load_dotenv
 from google import genai
@@ -187,23 +188,41 @@ data = response.json()
 
 pages = data['query']['pages']
 
-for k, v in pages.items():
-    if 'images' in v:
-        # take random image
-        img = random.choice(v['images'])
-        url_image = f"https://en.wikipedia.org/wiki/{img['title'].replace(' ', '_')}"
-        telegram_post = telegram_post + '\n\n' +url_image
-        break
+#exclude images with these extensions
+valid_extensions = ('jpg', 'jpeg', 'png')
+img_title = random.choice([img for img in random.choice(list(pages.values()))['images'] if img['title'].lower().endswith(valid_extensions)])['title']
+url_image = f"https://api.wikimedia.org/core/v1/commons/file/{img_title.replace(' ', '_')}"
+response = requests.get(url_image, headers=headers)
+data = response.json()
+image_bytes = io.BytesIO(requests.get(data['original']['url'],headers=headers).content)
 
-def send_message(chat_id, text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
+
+# post image and its caption
+def post_image_and_caption(chat_id, image_bytes, caption):
+    # First, upload the image
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+    photo_url = f"{url}/sendPhoto"
+    message_url = f"{url}/sendMessage"
+
+    payload_photo = {
         "chat_id": chat_id,
-        "text": text,
         "parse_mode": "Markdown",
     }
-    response = requests.post(url, json=payload)
-    return response.json()
+    files = {
+        "photo": image_bytes
+    }
+    payload_message = {
+        "chat_id": chat_id,
+        "text": caption,
+        "parse_mode": "Markdown",
+    }
+    response_photo = requests.post(photo_url, data=payload_photo, files=files)
+    response_message = requests.post(message_url, json=payload_message)
+    return [response_message.json(), response_photo.json()]
+
+
+responses = post_image_and_caption(CHANNEL_ID, image_bytes, telegram_post)
+print(responses)
 
 #response = send_message(CHANNEL_ID, telegram_post)
 print(response)
