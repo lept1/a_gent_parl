@@ -1,4 +1,5 @@
 import requests
+import sys
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -20,10 +21,12 @@ class WikipediaInterface:
         if not self.VERSION:
             raise ValueError("VERSION not found in environment variables.")
         self.headers = {'User-Agent': f'{self.APP_NAME}/{self.VERSION} ({self.GITHUB_REPO}; {self.USER_WIKI})'}
-        self.WIKIPEDIA_API_URL_METRICS = "https://wikimedia.org/api/rest_v1/metrics"
+        self.WIKI_API_URL_METRICS = "https://wikimedia.org/api/rest_v1/metrics"
+        self.WIKI_API_URL_SPARQL = "https://query.wikidata.org/sparql"
+        self.user_agent = "WDQS-example Python/%s.%s" % (sys.version_info[0], sys.version_info[1])
 
     def get_top_articles_by_country(self, country_code, date):
-        api_url = f"{self.WIKIPEDIA_API_URL_METRICS}/pageviews/top-per-country/{country_code}/all-access/{date}"
+        api_url = f"{self.WIKI_API_URL_METRICS}/pageviews/top-per-country/{country_code}/all-access/{date}"
         response = requests.get(api_url, headers=self.headers)
         if response.status_code != 200:
             raise Exception(f"Error fetching data from Wikipedia API: {response.status_code}")
@@ -75,3 +78,12 @@ class WikipediaInterface:
                     raise ValueError(f"No data available for {country} on {date}.")
         sorted_top_articles = self.get_top_n_articles(top_articles, top_n)
         return sorted_top_articles
+
+    
+    def get_results(self,endpoint_url, query):
+        
+        # TODO adjust user agent; see https://w.wiki/CX6
+        sparql = SPARQLWrapper(endpoint_url, agent=self.user_agent)
+        sparql.setQuery(query)
+        sparql.setReturnFormat(JSON)
+        return sparql.query().convert()

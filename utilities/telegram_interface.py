@@ -20,10 +20,10 @@ class TelegramInterface:
         
         self.base_url = f"https://api.telegram.org/bot{self.TELEGRAM_BOT_TOKEN}"
 
-    def send_message(self, chat_id, text):
+    def send_message(self, text):
         url = f"{self.base_url}/sendMessage"
         payload = {
-            "chat_id": chat_id,
+            "chat_id": self.CHANNEL_ID,
             "text": text,
             "parse_mode": "Markdown",
         }
