@@ -1,7 +1,10 @@
 import requests
 import sys
 import os
+import io
 from dotenv import load_dotenv
+from SPARQLWrapper import SPARQLWrapper, JSON
+import random
 load_dotenv()
 
 class WikipediaInterface:
@@ -23,6 +26,8 @@ class WikipediaInterface:
         self.headers = {'User-Agent': f'{self.APP_NAME}/{self.VERSION} ({self.GITHUB_REPO}; {self.USER_WIKI})'}
         self.WIKI_API_URL_METRICS = "https://wikimedia.org/api/rest_v1/metrics"
         self.WIKI_API_URL_SPARQL = "https://query.wikidata.org/sparql"
+        self.WIKI_API_URL = "https://en.wikipedia.org/w/api.php"
+        self.WIKI_API_FILE_URL = "https://api.wikimedia.org/core/v1/commons/file"
         self.user_agent = "WDQS-example Python/%s.%s" % (sys.version_info[0], sys.version_info[1])
 
     def get_top_articles_by_country(self, country_code, date):
@@ -80,10 +85,54 @@ class WikipediaInterface:
         return sorted_top_articles
 
     
-    def get_results(self,endpoint_url, query):
+    def sparql_get_results(self, query):
         
         # TODO adjust user agent; see https://w.wiki/CX6
-        sparql = SPARQLWrapper(endpoint_url, agent=self.user_agent)
+        sparql = SPARQLWrapper(self.WIKI_API_URL_SPARQL, agent=self.user_agent)
         sparql.setQuery(query)
         sparql.setReturnFormat(JSON)
         return sparql.query().convert()
+
+    def get_dead_on_date(self, professions):
+        queries = []
+        for p in professions:
+            queries.append((r"SELECT ?comicArtistLabel ?comicArtistDescription ?award_receivedLabel ?date_of_death WHERE { "
+                    r"?comicArtist wdt:P31 wd:Q5; "
+                    f"wdt:P106 {p}. "
+                    r"SERVICE wikibase:label { bd:serviceParam wikibase:language '[AUTO_LANGUAGE],mul,en'. } "
+                    r"OPTIONAL { ?comicArtist wdt:P570 ?date_of_death. } "
+                    r"OPTIONAL { ?comicArtist wdt:P166 ?award_received. } "
+                    r"FILTER((((DAY(?date_of_death)) = (DAY(NOW()))) && ((MONTH(?date_of_death)) = (MONTH(NOW())))))} "
+                    r"ORDER BY DESC (?date_of_death)"))
+        total_dict = {}
+        for query in queries:
+            results = self.sparql_get_results(query)
+            for result in results["results"]["bindings"]:
+                total_dict[result["comicArtistLabel"]["value"]] = {
+                    "description": result.get("comicArtistDescription", {}).get("value", "No description"),
+                    "award_received": result.get('award_receivedLabel', {}).get("value", "No award"),
+                    "date_of_death": result.get('date_of_death', {}).get("value", "No date")
+                }
+        return total_dict
+    
+    def get_random_wiki_image(self, title):
+        base_url_wiki = self.WIKI_API_URL
+        params = {
+            "action": "query",
+            "format": "json",
+            "titles": title.title(),
+            "prop": "images"
+        }
+        response = requests.get(url=base_url_wiki, params=params, headers=self.headers)
+        data = response.json()
+        pages = data['query']['pages']
+        valid_extensions = ('jpg', 'jpeg', 'png')
+        if 'images' not in list(random.choice(list(pages.values())).keys()):
+            raise ValueError("No images found")
+        img_title = random.choice([img for img in random.choice(list(pages.values()))['images'] if img['title'].lower().endswith(valid_extensions)])
+        if not img_title:
+            raise ValueError("No valid image found")
+        url_image = f"{self.WIKI_API_FILE_URL}/{img_title['title'].replace(' ', '_')}"
+        response = requests.get(url_image, headers=self.headers)
+        data = response.json()
+        return io.BytesIO(requests.get(data['original']['url'],headers=self.headers).content)
