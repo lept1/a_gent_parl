@@ -37,3 +37,27 @@ class LLMInterface:
                 print(f"Error occurred: {e}")
                 time.sleep(30)
         return f"An error occurred while generating text. {e}"
+    
+    def generate_content(self, system_instruction, contents, model="gemini-2.5-flash"):
+        # Define the grounding tool
+        grounding_tool = types.Tool(
+            google_search=types.GoogleSearch()
+        )
+
+        # Configure generation settings
+        chat_config = types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            tools=[grounding_tool]
+        )
+        for i in range(3):
+            try:
+                response = self.gemini_client.models.generate_content(
+                model=model,
+                config=chat_config,
+                contents=contents
+                )
+                return response.text
+            except Exception as e:
+                print(f"Error occurred: {e}")
+                time.sleep(30)
+        return f"An error occurred while generating content. {e}"
