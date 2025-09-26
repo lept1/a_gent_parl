@@ -26,7 +26,8 @@ class WikipediaInterface:
         self.headers = {'User-Agent': f'{self.APP_NAME}/{self.VERSION} ({self.GITHUB_REPO}; {self.USER_WIKI})'}
         self.WIKI_API_URL_METRICS = "https://wikimedia.org/api/rest_v1/metrics"
         self.WIKI_API_URL_SPARQL = "https://query.wikidata.org/sparql"
-        self.WIKI_API_URL = "https://en.wikipedia.org/w/api.php"
+        self.WIKI_API_URL = ["https://en.wikipedia.org/w/api.php", "https://de.wikipedia.org/w/api.php", "https://fr.wikipedia.org/w/api.php",
+                             "https://it.wikipedia.org/w/api.php", "https://es.wikipedia.org/w/api.php", "https://nl.wikipedia.org/w/api.php"]
         self.WIKI_API_FILE_URL = "https://api.wikimedia.org/core/v1/commons/file"
         self.user_agent = "WDQS-example Python/%s.%s" % (sys.version_info[0], sys.version_info[1])
 
@@ -116,23 +117,27 @@ class WikipediaInterface:
         return total_dict
     
     def get_random_wiki_image(self, title):
-        base_url_wiki = self.WIKI_API_URL
-        params = {
-            "action": "query",
-            "format": "json",
-            "titles": title.title(),
-            "prop": "images"
-        }
-        response = requests.get(url=base_url_wiki, params=params, headers=self.headers)
-        data = response.json()
-        pages = data['query']['pages']
-        valid_extensions = ('jpg', 'jpeg', 'png')
-        if 'images' not in list(random.choice(list(pages.values())).keys()):
-            raise ValueError("No images found")
-        img_title = random.choice([img for img in random.choice(list(pages.values()))['images'] if img['title'].lower().endswith(valid_extensions)])
-        if not img_title:
-            raise ValueError("No valid image found")
-        url_image = f"{self.WIKI_API_FILE_URL}/{img_title['title'].replace(' ', '_')}"
-        response = requests.get(url_image, headers=self.headers)
-        data = response.json()
-        return io.BytesIO(requests.get(data['original']['url'],headers=self.headers).content)
+        for base_url_wiki in self.WIKI_API_URL:
+            params = {
+                "action": "query",
+                "format": "json",
+                "titles": title,
+                "prop": "images"
+            }
+            response = requests.get(url=base_url_wiki, params=params, headers=self.headers)
+            data = response.json()
+            pages = data['query']['pages']
+            valid_extensions = ('jpg', 'jpeg', 'png')
+            if 'images' not in list(random.choice(list(pages.values())).keys()):
+                print(f"No images found for {title} in {base_url_wiki}")
+                continue
+            img_title = random.choice([img for img in random.choice(list(pages.values()))['images'] if img['title'].lower().endswith(valid_extensions)])
+            if not img_title:
+                print(f"No valid image found for {title} in {base_url_wiki}")
+                continue
+            #remove any word before ":" from the title in any language
+            img_title_clean = img_title['title'].split(":")[-1].strip()
+            url_image = f"{self.WIKI_API_FILE_URL}/File:{img_title_clean.replace(' ', '_')}"
+            response = requests.get(url_image, headers=self.headers)
+            data = response.json()
+            return io.BytesIO(requests.get(data['original']['url'],headers=self.headers).content)

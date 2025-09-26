@@ -25,7 +25,7 @@ system_instruction = """
 
     #AccaddeOggi <DD MMM> 📅
 
-    <EMOTICON RELEVANT TO THE PERSON> **<NAME>** <EMOTICON RELEVANT TO THE PERSON>
+    <EMOTICON RELEVANT TO THE PERSON> **<Name>** <EMOTICON RELEVANT TO THE PERSON>
     <EMOTICON > Nato il: <DATE OF BIRTH if available> - Morto il: <DATE OF DEATH if available>
     <IF AWARD RECEIVED EMOTICON AWARD> Premi Ricevuti: <AWARD RECEIVED>
     <LONG DESCRIPTION>
