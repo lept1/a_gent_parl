@@ -3,7 +3,7 @@ import utilities.llm_interface as llm
 import utilities.telegram_interface as telegram
 
 country_list = ["IT"]
-pages_to_exclude =  ["Main_Page", "Special:Search", "Pagina_principale", "Speciale:Ricerca", "Wikipedia:Hauptseite", "Spezial:Suche", "Wikipedia:Portada", "Especial:Buscar", "Wikipédia:Accueil_principal","Spécial:Recherche","Wikipedia:Featured pictures"]
+pages_to_exclude =  ["Main_Page", "Special:Search", "Pagina_principale", "Speciale:Ricerca", "Wikipedia:Hauptseite", "Spezial:Suche", "Wikipedia:Portada", "Especial:Buscar", "Wikipédia:Accueil_principal","Spécial:Recherche","Wikipedia:Featured_pictures"]
 wiki_interface = wiki.WikipediaInterface()
 top_articles = wiki_interface.get_top_n_articles_over_period(country_list, 'week', pages_to_exclude, top_n=5)
 
