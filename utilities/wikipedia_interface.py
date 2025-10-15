@@ -130,11 +130,14 @@ class WikipediaInterface:
             valid_extensions = ('jpg', 'jpeg', 'png')
             if 'images' not in list(random.choice(list(pages.values())).keys()):
                 print(f"No images found for {title} in {base_url_wiki}")
-                continue
+                return None
+            if not any(img['title'].lower().endswith(valid_extensions) for img in random.choice(list(pages.values()))['images']):
+                print(f"No valid image found for {title} in {base_url_wiki}")
+                return None
             img_title = random.choice([img for img in random.choice(list(pages.values()))['images'] if img['title'].lower().endswith(valid_extensions)])
             if not img_title:
                 print(f"No valid image found for {title} in {base_url_wiki}")
-                continue
+                return None
             #remove any word before ":" from the title in any language
             img_title_clean = img_title['title'].split(":")[-1].strip()
             url_image = f"{self.WIKI_API_FILE_URL}/File:{img_title_clean.replace(' ', '_')}"

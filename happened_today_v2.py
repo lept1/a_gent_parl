@@ -38,4 +38,8 @@ telegram_post = llm_interface.generate_text(system_instruction, prompt)
 name = telegram_post.split("**")[1].strip()
 # Now, get an image from Wikipedia
 image_bytes = wiki_interface.get_random_wiki_image(name)
-telegram_interface.post_image_and_caption(image_bytes, telegram_post)
+if image_bytes is None:
+    # Load a default image
+    telegram_interface.send_message(telegram_post)
+else:
+    telegram_interface.post_image_and_caption(image_bytes, telegram_post)
