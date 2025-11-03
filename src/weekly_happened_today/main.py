@@ -1,4 +1,4 @@
-import utilities.wikipedia_interface as wiki
+import src.utilities.wikipedia_interface as wiki
 import utilities.llm_interface as llm
 import utilities.telegram_interface as telegram
 import random

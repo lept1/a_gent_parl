@@ -1,7 +1,7 @@
-import utilities.wikipedia_interface as wiki
-import utilities.llm_interface as llm
+import src.utilities.wikipedia_interface as wiki
+import src.utilities.llm_interface as llm
 from google.genai import types
-import utilities.telegram_interface as telegram
+import src.utilities.telegram_interface as telegram
 import os
 
 

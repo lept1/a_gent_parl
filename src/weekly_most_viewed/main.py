@@ -1,6 +1,6 @@
-import utilities.wikipedia_interface as wiki
-import utilities.llm_interface as llm
-import utilities.telegram_interface as telegram
+import src.utilities.wikipedia_interface as wiki
+import src.utilities.llm_interface as llm
+import src.utilities.telegram_interface as telegram
 
 country_list = ["IT"]
 pages_to_exclude =  ["Main_Page", "Special:Search", "Pagina_principale", "Speciale:Ricerca", "Wikipedia:Hauptseite", "Spezial:Suche", "Wikipedia:Portada", "Especial:Buscar", "Wikipédia:Accueil_principal","Spécial:Recherche","Wikipedia:Featured_pictures"]
