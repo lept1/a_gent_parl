@@ -1,9 +1,6 @@
 import src.utilities.wikipedia_interface as wiki
-import utilities.llm_interface as llm
-import utilities.telegram_interface as telegram
-import random
-import io
-import os
+import src.utilities.llm_interface as llm
+import src.utilities.telegram_interface as telegram
 
 wiki_interface = wiki.WikipediaInterface()
 llm_interface = llm.LLMInterface()

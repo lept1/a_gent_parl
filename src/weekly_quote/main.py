@@ -1,9 +1,13 @@
-import utilities.telegram_interface as telegram
-import utilities.llm_interface as llm
+import src.utilities.telegram_interface as telegram
+import src.utilities.llm_interface as llm
 import sqlite3
-db_path = r"c:\Users\adellorto\projects\a_gent_parl\quote_db.sqlite3"
+import os
+
+db_name = 'quote_db.sqlite3'
+
+db_path = os.path.realpath(__file__).replace(os.path.basename(__file__), db_name)
 conn = sqlite3.connect(db_path)
-cursor=conn.cursor()
+cursor = conn.cursor()
 query_text = 'SELECT * FROM Quote WHERE posted=0 AND (category LIKE ? OR category LIKE ? OR category LIKE ? OR category LIKE ?) ORDER BY RANDOM() LIMIT 1'
 records = cursor.execute(query_text, ['%anime%','%comics%','%cartoon%','%manga%']).fetchall()
 
@@ -38,13 +42,3 @@ query_text = 'UPDATE Quote SET posted=1 WHERE id=?'
 cursor.execute(query_text, (records[0][0],))
 conn.commit()
 print(f"Marked quote id {records[0][0]} as posted.")
-
-
-# csvfile = r"c:\Users\adellorto\Downloads\quotes.csv\quotes.csv"
-# import pandas as pd
-# df = pd.read_csv(csvfile)
-# df['id'] = df.index + 1
-# df['posted'] = 0
-# df = df[['id','author','category','quote','posted']]
-# df.to_sql('Quote', conn, if_exists='append', index=False)
-
