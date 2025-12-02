@@ -5,3 +5,5 @@ __pycache__/
 .DS_Store
 *.sqlite3
 *.pdf
+*_files/
+*.html
