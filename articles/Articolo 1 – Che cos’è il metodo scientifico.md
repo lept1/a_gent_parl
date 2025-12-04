@@ -32,7 +32,7 @@ Ma cosa significa tutto questo in pratica? Scomponiamolo e vediamo i suoi elemen
 ### 3.1 Osservazione
 Una delle domande che fece il professore fu: "Cosa si deve osservare?" e una delle risposte fu: "La natura, tutto quello che ci circonda". E quì la prima svolta concettuale: "Non si osserva tutto indiscriminatamente, ma si osserva qualcosa che cambia, che muta, che si evolve, qualcosa che si mostra". Ossia si osserva un fenomeno.
 
-Non possiamo neanche osservare in maniera casuale o disordinata, ma bisogna avere un piano, un'idea di cosa cercare, cercando di eliminare il più possibile le interpretazioni personali o pregiudizi.[Secondo Popper l'osservazione non è mai neutra ma è sempre intrisa di quell'ipotesi che, appunto, si vorrebbe dimostrare.]{.aside}
+Non possiamo neanche osservare in maniera casuale o disordinata, ma bisogna avere un piano, un'idea di cosa cercare, cercando di eliminare il più possibile le interpretazioni personali o pregiudizi.[Secondo Popper l'osservazione non è mai neutra ma è sempre intrisa di quell'ipotesi che, appunto, si vorrebbe dimostrare. Approfondiremo nei prossimi articoli.]{.aside}
 
 Facciamo un esempio. Due stregoni guardano un fulmine per la prima volta. Lo stregone nero dice: "Quella luce e quel rombo sono la manifestazione della collera degli dei!". Lo stregone rosso invece non dice nulla, ma prende nota della luce, del rombo, della direzione da cui proviene, delle condizioni meteorologiche, della temperatura dell'aria, ecc. e soprattutto cerca come poter riosservare il fenomeno in futuro per confrontare le sue osservazioni. 
 
@@ -52,12 +52,10 @@ Perchè l'osservazione non basta? Perchè da sola non ci dà spiegazioni, ma sol
 
 Quindi per andare oltre la semplice descrizione, dobbiamo formulare un'ipotesi, ossia una spiegazione provvisoria del fenomeno osservato che possa essere testata. In termini più rigorosi, un'ipotesi è la creazione di un modello concettuale o matematico che cerca di spiegare le osservazioni fatte.
 Questa fase è la più creativa del metodo scientifico, poiché richiede immaginazione e intuizione per formulare possibili spiegazioni.
-Questo non significa che l'ipotesi debba essere "giusta" o "vera", ma deve essere formulata in modo tale da poter essere testata e potenzialmente falsificata attraverso esperimenti.
+Questo non significa che l'ipotesi debba essere "giusta" o "vera", ma deve essere formulata in modo tale da poter essere testata e potenzialmente **falsificata** attraverso esperimenti.
 [Questa fase è la parte induttiva del metodo scientifico, dove si va dal particolare (osservazioni) al generale (ipotesi).]{.aside}
-Un'ipotesi deve essere:
-- Formulata in modo chiaro e verificabile (falsificabile)
-- Semplice e testabile attraverso esperimenti
-- Basata su osservazioni preliminari e conoscenze pregresse
+Un'ipotesi deve essee Testabile e falsificabile attraverso esperimenti.
+Facciamo un esempio. Supponiamo di osservare che le piante crescono più velocemente quando esposte a una certa luce. Un'ipotesi potrebbe essere: "La luce blu stimola la crescita delle piante più della luce rossa". Questa ipotesi può essere testata attraverso esperimenti controllati.
 
 ### 3.3 Esperimento e raccolta dati
 L'esperimento deve essere:
