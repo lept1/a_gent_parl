@@ -144,3 +144,256 @@ class WikipediaInterface:
             response = requests.get(url_image, headers=self.headers)
             data = response.json()
             return io.BytesIO(requests.get(data['original']['url'],headers=self.headers).content)
+
+    def get_category_members(self, category_name, lang='en', limit=50):
+        """
+        Gets list of articles in a category.
+        
+        Args:
+            category_name: Wikipedia category name (e.g., "Anime", "Video_games")
+            lang: Language code for Wikipedia (default: 'en')
+            limit: Maximum number of members to return
+        
+        Returns:
+            list: List of article titles
+        """
+        # Map language codes to Wikipedia API URLs
+        lang_to_url = {
+            'en': 'https://en.wikipedia.org/w/api.php',
+            'de': 'https://de.wikipedia.org/w/api.php', 
+            'fr': 'https://fr.wikipedia.org/w/api.php',
+            'it': 'https://it.wikipedia.org/w/api.php',
+            'es': 'https://es.wikipedia.org/w/api.php',
+            'nl': 'https://nl.wikipedia.org/w/api.php'
+        }
+        
+        api_url = lang_to_url.get(lang, 'https://en.wikipedia.org/w/api.php')
+        
+        params = {
+            'action': 'query',
+            'format': 'json',
+            'list': 'categorymembers',
+            'cmtitle': f'Category:{category_name}',
+            'cmlimit': limit,
+            'cmnamespace': 0  # Only articles (namespace 0), exclude meta pages
+        }
+        
+        try:
+            response = requests.get(api_url, params=params, headers=self.headers)
+            response.raise_for_status()
+            data = response.json()
+            
+            if 'query' in data and 'categorymembers' in data['query']:
+                # Filter out disambiguation pages and meta pages
+                members = []
+                for member in data['query']['categorymembers']:
+                    title = member['title']
+                    # Skip disambiguation pages and list pages
+                    if not ('disambiguation' in title.lower() or 
+                           title.startswith('List of') or
+                           title.startswith('Category:') or
+                           '(disambiguation)' in title):
+                        members.append(title)
+                return members
+            else:
+                return []
+                
+        except requests.RequestException as e:
+            print(f"Error fetching category members for {category_name}: {e}")
+            return []
+
+    def get_random_article_from_category(self, category_name, lang='en'):
+        """
+        Fetches a random article from a Wikipedia category.
+        
+        Args:
+            category_name: Wikipedia category (e.g., "Anime", "Video_games")
+            lang: Language code for Wikipedia (default: 'en')
+        
+        Returns:
+            dict: {
+                'title': str,
+                'url': str,
+                'pageid': int
+            } or None if no suitable article found
+        """
+        # Get category members
+        members = self.get_category_members(category_name, lang, limit=100)
+        
+        if not members:
+            print(f"No members found in category {category_name}")
+            return None
+        
+        # Map language codes to Wikipedia base URLs
+        lang_to_base_url = {
+            'en': 'https://en.wikipedia.org',
+            'de': 'https://de.wikipedia.org', 
+            'fr': 'https://fr.wikipedia.org',
+            'it': 'https://it.wikipedia.org',
+            'es': 'https://es.wikipedia.org',
+            'nl': 'https://nl.wikipedia.org'
+        }
+        
+        lang_to_api_url = {
+            'en': 'https://en.wikipedia.org/w/api.php',
+            'de': 'https://de.wikipedia.org/w/api.php', 
+            'fr': 'https://fr.wikipedia.org/w/api.php',
+            'it': 'https://it.wikipedia.org/w/api.php',
+            'es': 'https://es.wikipedia.org/w/api.php',
+            'nl': 'https://nl.wikipedia.org/w/api.php'
+        }
+        
+        base_url = lang_to_base_url.get(lang, 'https://en.wikipedia.org')
+        api_url = lang_to_api_url.get(lang, 'https://en.wikipedia.org/w/api.php')
+        
+        # Try up to 10 random selections to find a suitable article
+        max_attempts = min(10, len(members))
+        
+        for _ in range(max_attempts):
+            # Select random article
+            random_title = random.choice(members)
+            
+            # Get basic article info to validate content length
+            params = {
+                'action': 'query',
+                'format': 'json',
+                'titles': random_title,
+                'prop': 'extracts|info',
+                'exintro': True,
+                'explaintext': True,
+                'inprop': 'url'
+            }
+            
+            try:
+                response = requests.get(api_url, params=params, headers=self.headers)
+                response.raise_for_status()
+                data = response.json()
+                
+                if 'query' in data and 'pages' in data['query']:
+                    pages = data['query']['pages']
+                    page_data = next(iter(pages.values()))
+                    
+                    # Check if page exists and has content
+                    if 'missing' not in page_data and 'extract' in page_data:
+                        extract = page_data.get('extract', '')
+                        
+                        # Validate content length (minimum 500 characters as per requirements)
+                        if len(extract) >= 500:
+                            return {
+                                'title': page_data['title'],
+                                'url': page_data.get('fullurl', f"{base_url}/wiki/{page_data['title'].replace(' ', '_')}"),
+                                'pageid': page_data['pageid']
+                            }
+                        else:
+                            # Remove this article from members list to avoid selecting it again
+                            members.remove(random_title)
+                            
+            except requests.RequestException as e:
+                print(f"Error fetching article {random_title}: {e}")
+                continue
+        
+        print(f"Could not find suitable article from category {category_name} after {max_attempts} attempts")
+        return None
+
+    def get_article_content(self, article_title, lang='en'):
+        """
+        Fetches full article content including summary and text.
+        
+        Args:
+            article_title: Title of the Wikipedia article
+            lang: Language code for Wikipedia (default: 'en')
+        
+        Returns:
+            dict: {
+                'title': str,
+                'url': str,
+                'summary': str,
+                'content': str,
+                'length': int
+            } or None if article not found
+        """
+        # Map language codes to Wikipedia API URLs and base URLs
+        lang_to_api_url = {
+            'en': 'https://en.wikipedia.org/w/api.php',
+            'de': 'https://de.wikipedia.org/w/api.php', 
+            'fr': 'https://fr.wikipedia.org/w/api.php',
+            'it': 'https://it.wikipedia.org/w/api.php',
+            'es': 'https://es.wikipedia.org/w/api.php',
+            'nl': 'https://nl.wikipedia.org/w/api.php'
+        }
+        
+        lang_to_base_url = {
+            'en': 'https://en.wikipedia.org',
+            'de': 'https://de.wikipedia.org', 
+            'fr': 'https://fr.wikipedia.org',
+            'it': 'https://it.wikipedia.org',
+            'es': 'https://es.wikipedia.org',
+            'nl': 'https://nl.wikipedia.org'
+        }
+        
+        api_url = lang_to_api_url.get(lang, 'https://en.wikipedia.org/w/api.php')
+        base_url = lang_to_base_url.get(lang, 'https://en.wikipedia.org')
+        
+        # Get article summary (intro section)
+        summary_params = {
+            'action': 'query',
+            'format': 'json',
+            'titles': article_title,
+            'prop': 'extracts|info',
+            'exintro': True,
+            'explaintext': True,
+            'inprop': 'url'
+        }
+        
+        # Get full article content
+        content_params = {
+            'action': 'query',
+            'format': 'json',
+            'titles': article_title,
+            'prop': 'extracts|info',
+            'explaintext': True,
+            'inprop': 'url'
+        }
+        
+        try:
+            # Fetch summary
+            summary_response = requests.get(api_url, params=summary_params, headers=self.headers)
+            summary_response.raise_for_status()
+            summary_data = summary_response.json()
+            
+            # Fetch full content
+            content_response = requests.get(api_url, params=content_params, headers=self.headers)
+            content_response.raise_for_status()
+            content_data = content_response.json()
+            
+            if ('query' in summary_data and 'pages' in summary_data['query'] and
+                'query' in content_data and 'pages' in content_data['query']):
+                
+                summary_pages = summary_data['query']['pages']
+                content_pages = content_data['query']['pages']
+                
+                summary_page = next(iter(summary_pages.values()))
+                content_page = next(iter(content_pages.values()))
+                
+                # Check if page exists
+                if 'missing' in summary_page or 'missing' in content_page:
+                    print(f"Article '{article_title}' not found")
+                    return None
+                
+                summary = summary_page.get('extract', '')
+                content = content_page.get('extract', '')
+                
+                return {
+                    'title': summary_page['title'],
+                    'url': summary_page.get('fullurl', f"{base_url}/wiki/{summary_page['title'].replace(' ', '_')}"),
+                    'summary': summary,
+                    'content': content,
+                    'length': len(content)
+                }
+            else:
+                print(f"Invalid response structure for article '{article_title}'")
+                return None
+                
+        except requests.RequestException as e:
+            print(f"Error fetching content for article '{article_title}': {e}")
+            return None
