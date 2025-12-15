@@ -1,10 +1,15 @@
-import src.utilities.wikipedia_interface as wiki
-import src.utilities.llm_interface as llm
-import src.utilities.telegram_interface as telegram
+from src.utilities.wikipedia_interface import WikipediaInterface
+from src.utilities.llm_interface import LLMInterface
+from src.utilities.telegram_interface import TelegramInterface
+from src.utilities.config_manager import ConfigManager
 
-wiki_interface = wiki.WikipediaInterface()
-llm_interface = llm.LLMInterface()
-telegram_interface = telegram.TelegramInterface()
+# Initialize configuration manager
+config = ConfigManager('weekly_happened_today')
+config.ensure_data_directories()
+
+wiki_interface = WikipediaInterface()
+llm_interface = LLMInterface(env_path=config.get_env_path())
+telegram_interface = TelegramInterface(env_path=config.get_env_path())
 
 professions=['wd:Q266569','wd:Q5434338','wd:Q191633','wd:Q1114448','wd:Q715301']
 total_dict = wiki_interface.get_dead_on_date(professions)
@@ -30,7 +35,7 @@ system_instruction = """
   Do not include any other text or explanation.
 """
 
-llm_interface = llm.LLMInterface(env_path='.env')
+# LLM interface already initialized above
 telegram_post = llm_interface.generate_text(system_instruction, prompt)
 name = telegram_post.split("**")[1].strip()
 # Now, get an image from Wikipedia

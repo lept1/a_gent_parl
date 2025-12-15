@@ -23,19 +23,48 @@ import src.utilities.wikipedia_interface as wiki
 import src.utilities.llm_interface as llm
 import src.utilities.telegram_interface as telegram
 
-# Import local modules
-try:
-    from . import config
-    from . import database
-except ImportError:
-    # Fallback for direct execution
-    import config
-    import database
+# Import generic utilities
+from src.utilities.config_manager import ConfigManager
+from src.utilities.database_manager import ContentDatabase
+
+# Initialize configuration manager
+config_manager = ConfigManager('weekly_nerd_curiosities')
+
+# Load nerd-specific categories
+NERD_CATEGORIES = [
+    "Anime",
+    "Manga", 
+    "Comics",
+    "Video_games",
+    "Science_fiction",
+    "Fantasy",
+    "Tabletop_games",
+    "Animation",
+    "Japanese_popular_culture",
+    "Superhero_fiction",
+    "Role-playing_games",
+    "Collectible_card_games"
+]
+
+config_manager.load_categories(NERD_CATEGORIES)
+
+# Set nerd-specific validation constants
+config_manager.set_validation_constants(
+    min_content_length=500,
+    max_retries=5,
+    post_length_min=200,
+    post_length_max=500,
+    telegram_retry_attempts=3,
+    telegram_retry_delay=30
+)
+
+# Ensure data directories exist
+config_manager.ensure_data_directories()
 
 def setup_logging():
     """Configure logging for debugging and monitoring following existing project patterns."""
     # Create logs directory if it doesn't exist
-    log_dir = config.get_log_directory()
+    log_dir = config_manager.get_log_directory()
     os.makedirs(log_dir, exist_ok=True)
     
     # Configure logging with both console and file output
@@ -60,7 +89,7 @@ def setup_logging():
 def load_environment_variables():
     """Load environment variables using existing project pattern."""
     # Follow the existing project pattern - utilities use '../utilities/.env'
-    utilities_env_path = config.get_env_path()
+    utilities_env_path = config_manager.get_env_path()
     
     if os.path.exists(utilities_env_path):
         load_dotenv(utilities_env_path)
@@ -165,7 +194,7 @@ def generate_nerd_post(article_data: dict) -> dict:
     logger.info(f"Generating content for article: {article_data['title']}")
     
     # Initialize LLM interface following existing project pattern
-    llm_interface = llm.LLMInterface(env_path=config.get_env_path())
+    llm_interface = llm.LLMInterface(env_path=config_manager.get_env_path())
     
     # Create the prompt
     user_prompt = create_content_generation_prompt(
@@ -176,8 +205,9 @@ def generate_nerd_post(article_data: dict) -> dict:
     )
     
     # Retry logic for AI generation
-    for attempt in range(config.TELEGRAM_RETRY_ATTEMPTS):
-        logger.info(f"Content generation attempt {attempt + 1}/{config.TELEGRAM_RETRY_ATTEMPTS}")
+    telegram_retry_attempts = config_manager.get_validation_constant('telegram_retry_attempts')
+    for attempt in range(telegram_retry_attempts):
+        logger.info(f"Content generation attempt {attempt + 1}/{telegram_retry_attempts}")
         
         try:
             # Generate content using LLM
@@ -214,7 +244,7 @@ def generate_nerd_post(article_data: dict) -> dict:
             logger.error(f"Error in content generation attempt {attempt + 1}: {str(e)}")
             continue
     
-    logger.error(f"Failed to generate valid content after {config.TELEGRAM_RETRY_ATTEMPTS} attempts")
+    logger.error(f"Failed to generate valid content after {telegram_retry_attempts} attempts")
     return None
 
 
@@ -235,16 +265,19 @@ def validate_generated_post(content: str) -> dict:
     content_length = len(content)
     
     # Check length requirements
-    if content_length < config.POST_LENGTH_MIN:
+    post_length_min = config_manager.get_validation_constant('post_length_min')
+    post_length_max = config_manager.get_validation_constant('post_length_max')
+    
+    if content_length < post_length_min:
         return {
             'is_valid': False, 
-            'reason': f'Content too short: {content_length} chars (min: {config.POST_LENGTH_MIN})'
+            'reason': f'Content too short: {content_length} chars (min: {post_length_min})'
         }
     
-    if content_length > config.POST_LENGTH_MAX:
+    if content_length > post_length_max:
         return {
             'is_valid': False, 
-            'reason': f'Content too long: {content_length} chars (max: {config.POST_LENGTH_MAX})'
+            'reason': f'Content too long: {content_length} chars (max: {post_length_max})'
         }
     
     # Check for basic Italian content indicators
@@ -300,11 +333,14 @@ def publish_to_telegram(post_content: str) -> dict:
     logger.info("Starting Telegram publishing process")
     
     # Initialize Telegram interface following existing project pattern
-    telegram_interface = telegram.TelegramInterface(env_path=config.get_env_path())
+    telegram_interface = telegram.TelegramInterface(env_path=config_manager.get_env_path())
     
     # Retry logic for Telegram publishing
-    for attempt in range(config.TELEGRAM_RETRY_ATTEMPTS):
-        logger.info(f"Telegram publish attempt {attempt + 1}/{config.TELEGRAM_RETRY_ATTEMPTS}")
+    telegram_retry_attempts = config_manager.get_validation_constant('telegram_retry_attempts')
+    telegram_retry_delay = config_manager.get_validation_constant('telegram_retry_delay')
+    
+    for attempt in range(telegram_retry_attempts):
+        logger.info(f"Telegram publish attempt {attempt + 1}/{telegram_retry_attempts}")
         
         try:
             # Send message to Telegram
@@ -323,9 +359,9 @@ def publish_to_telegram(post_content: str) -> dict:
                 logger.warning(f"Telegram API returned error on attempt {attempt + 1}: {error_msg}")
                 
                 # If this is not the last attempt, wait before retrying
-                if attempt < config.TELEGRAM_RETRY_ATTEMPTS - 1:
-                    logger.info(f"Waiting {config.TELEGRAM_RETRY_DELAY} seconds before retry...")
-                    time.sleep(config.TELEGRAM_RETRY_DELAY)
+                if attempt < telegram_retry_attempts - 1:
+                    logger.info(f"Waiting {telegram_retry_delay} seconds before retry...")
+                    time.sleep(telegram_retry_delay)
                     continue
                 else:
                     return {
@@ -339,9 +375,9 @@ def publish_to_telegram(post_content: str) -> dict:
             logger.error(f"Error on attempt {attempt + 1}: {error_msg}")
             
             # If this is not the last attempt, wait before retrying
-            if attempt < config.TELEGRAM_RETRY_ATTEMPTS - 1:
-                logger.info(f"Waiting {config.TELEGRAM_RETRY_DELAY} seconds before retry...")
-                time.sleep(config.TELEGRAM_RETRY_DELAY)
+            if attempt < telegram_retry_attempts - 1:
+                logger.info(f"Waiting {telegram_retry_delay} seconds before retry...")
+                time.sleep(telegram_retry_delay)
                 continue
             else:
                 return {
@@ -354,7 +390,7 @@ def publish_to_telegram(post_content: str) -> dict:
     return {
         'success': False,
         'response': None,
-        'error': f"Failed to publish after {config.TELEGRAM_RETRY_ATTEMPTS} attempts"
+        'error': f"Failed to publish after {telegram_retry_attempts} attempts"
     }
 
 
@@ -387,11 +423,14 @@ def publish_and_update_database(post_data: dict) -> dict:
     
     # Step 2: Update database only after successful Telegram publish
     try:
-        with database.NerdCuriositiesDB(config.DATABASE_PATH) as db:
-            db_success = db.mark_article_posted(
-                article_title=post_data['article_title'],
-                article_url=post_data['article_url'],
-                category=post_data['category']
+        db_path = config_manager.get_module_database_path('nerd_curiosities.sqlite3')
+        with ContentDatabase(db_path, 'ArticleHistory') as db:
+            db_success = db.mark_content_posted(
+                content_title=post_data['article_title'],
+                content_url=post_data['article_url'],
+                category=post_data['category'],
+                content_type='article',
+                module_name='weekly_nerd_curiosities'
             )
             
             if db_success:
@@ -436,17 +475,21 @@ def get_random_nerd_article():
     logger.info("Starting article discovery process")
     
     # Initialize Wikipedia interface following existing project pattern
-    wiki_interface = wiki.WikipediaInterface(env_path=config.get_env_path())
+    wiki_interface = wiki.WikipediaInterface(env_path=config_manager.get_env_path())
     
     # Initialize database
-    with database.NerdCuriositiesDB(config.DATABASE_PATH) as db:
+    db_path = config_manager.get_module_database_path('nerd_curiosities.sqlite3')
+    with ContentDatabase(db_path, 'ArticleHistory') as db:
         
-        for attempt in range(config.MAX_RETRIES):
-            logger.info(f"Article discovery attempt {attempt + 1}/{config.MAX_RETRIES}")
+        max_retries = config_manager.get_validation_constant('max_retries')
+        min_article_length = config_manager.get_validation_constant('min_content_length')
+        
+        for attempt in range(max_retries):
+            logger.info(f"Article discovery attempt {attempt + 1}/{max_retries}")
             
             try:
                 # Select random category
-                selected_category = config.select_random_category()
+                selected_category = config_manager.select_random_category()
                 logger.info(f"Selected category: {selected_category}")
                 
                 # Get random article from category
@@ -460,7 +503,7 @@ def get_random_nerd_article():
                 logger.info(f"Found article: {article_title}")
                 
                 # Check if article already posted
-                if db.is_article_posted(article_title):
+                if db.is_content_posted(article_title, 'article'):
                     logger.info(f"Article '{article_title}' already posted, retrying...")
                     continue
                 
@@ -472,7 +515,7 @@ def get_random_nerd_article():
                     continue
                 
                 # Validate content length
-                if article_content['length'] < config.MIN_ARTICLE_LENGTH:
+                if article_content['length'] < min_article_length:
                     logger.info(f"Article '{article_title}' too short ({article_content['length']} chars), retrying...")
                     continue
                 
@@ -492,7 +535,7 @@ def get_random_nerd_article():
                 logger.error(f"Error in attempt {attempt + 1}: {str(e)}")
                 continue
         
-        logger.error(f"Failed to find suitable article after {config.MAX_RETRIES} attempts")
+        logger.error(f"Failed to find suitable article after {max_retries} attempts")
         return None
 
 
@@ -515,30 +558,32 @@ def main():
         load_environment_variables()
         
         # Validate configuration
-        config_validation = config.validate_configuration()
+        config_validation = config_manager.validate_configuration()
         logger.info("Configuration validation results:")
         for key, value in config_validation.items():
             logger.info(f"  {key}: {value}")
         
         # Log configuration info
-        logger.info(f"Database path: {config.DATABASE_PATH}")
-        logger.info(f"Environment file: {config.get_env_path()}")
-        logger.info(f"Log directory: {config.get_log_directory()}")
-        logger.info(f"Available categories: {len(config.NERD_CATEGORIES)}")
-        logger.info(f"Max retries for article discovery: {config.MAX_RETRIES}")
-        logger.info(f"Telegram retry attempts: {config.TELEGRAM_RETRY_ATTEMPTS}")
-        logger.info(f"Post length constraints: {config.POST_LENGTH_MIN}-{config.POST_LENGTH_MAX} chars")
-        logger.info(f"Minimum article length: {config.MIN_ARTICLE_LENGTH} chars")
+        db_path = config_manager.get_module_database_path('nerd_curiosities.sqlite3')
+        logger.info(f"Database path: {db_path}")
+        logger.info(f"Environment file: {config_manager.get_env_path()}")
+        logger.info(f"Log directory: {config_manager.get_log_directory()}")
+        logger.info(f"Available categories: {len(config_manager.get_all_categories())}")
+        logger.info(f"Max retries for article discovery: {config_manager.get_validation_constant('max_retries')}")
+        logger.info(f"Telegram retry attempts: {config_manager.get_validation_constant('telegram_retry_attempts')}")
+        logger.info(f"Post length constraints: {config_manager.get_validation_constant('post_length_min')}-{config_manager.get_validation_constant('post_length_max')} chars")
+        logger.info(f"Minimum article length: {config_manager.get_validation_constant('min_content_length')} chars")
         
         # Initialize database connection and verify schema
         logger.info("Initializing database connection...")
-        with database.NerdCuriositiesDB(config.DATABASE_PATH) as db:
+        db_path = config_manager.get_module_database_path('nerd_curiosities.sqlite3')
+        with ContentDatabase(db_path, 'ArticleHistory') as db:
             # Test database connection
-            recent_posts = db.get_recent_posts(7)  # Last 7 days
+            recent_posts = db.get_recent_posts(7, 'article')  # Last 7 days
             logger.info(f"Database connected successfully. Recent posts in last 7 days: {len(recent_posts)}")
             
             # Log category statistics
-            category_stats = db.get_category_stats()
+            category_stats = db.get_category_stats('article')
             if category_stats:
                 logger.info("Category distribution in database:")
                 for category, count in category_stats.items():

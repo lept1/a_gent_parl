@@ -1,10 +1,15 @@
-import src.utilities.wikipedia_interface as wiki
-import src.utilities.llm_interface as llm
-import src.utilities.telegram_interface as telegram
+from src.utilities.wikipedia_interface import WikipediaInterface
+from src.utilities.llm_interface import LLMInterface
+from src.utilities.telegram_interface import TelegramInterface
+from src.utilities.config_manager import ConfigManager
+
+# Initialize configuration manager
+config = ConfigManager('weekly_most_viewed')
+config.ensure_data_directories()
 
 country_list = ["IT"]
 pages_to_exclude =  ["Main_Page", "Special:Search", "Pagina_principale", "Speciale:Ricerca", "Wikipedia:Hauptseite", "Spezial:Suche", "Wikipedia:Portada", "Especial:Buscar", "Wikipédia:Accueil_principal","Spécial:Recherche","Wikipedia:Featured_pictures"]
-wiki_interface = wiki.WikipediaInterface()
+wiki_interface = WikipediaInterface()
 top_articles = wiki_interface.get_top_n_articles_over_period(country_list, 'week', pages_to_exclude, top_n=5)
 
 query = "These are the trending Wikipedia articles from last week:\n"
@@ -31,8 +36,8 @@ system_instruction = """
   Do not include any other text or explanation.
 """
 
-llm_interface = llm.LLMInterface(env_path='.env')
+llm_interface = LLMInterface(env_path=config.get_env_path())
 response = llm_interface.generate_text(system_instruction, query)
 
-telegram_bot = telegram.TelegramInterface(env_path='.env')
+telegram_bot = TelegramInterface(env_path=config.get_env_path())
 telegram_bot.send_message(response)
