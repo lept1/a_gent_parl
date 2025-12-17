@@ -340,7 +340,7 @@ class ContentDatabase:
             return []
     
     def get_random_unposted_content(self, 
-                                  content_type: Optional[str] = None, 
+                                  content_type: Optional[str] = None,
                                   category: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Get a random piece of unposted content.
@@ -469,41 +469,41 @@ class QuoteDatabase(ContentDatabase):
             print(f"Error ensuring quote schema: {e}")
             raise
     
-    def get_random_unposted_quote(self, excluded_categories: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
+    def get_random_unposted_quote(self, categories: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
         """
         Get a random unposted quote, optionally excluding certain categories.
         
         Args:
-            excluded_categories: List of categories to exclude from selection
+            categories: List of categories to select
             
         Returns:
             Dictionary containing quote information, or None if no quotes found
         """
         try:
             conditions = ["posted = 0"]
-            params = []
+            params=[]
             
-            if excluded_categories:
-                placeholders = ','.join(['?' for _ in excluded_categories])
-                conditions.append(f"category NOT IN ({placeholders})")
-                params.extend(excluded_categories)
+            if categories:
+                category_conditions = ' OR '.join(['category LIKE ?' for _ in categories])
+                conditions.append(f"({category_conditions})")
+                params.extend([f"%{category}%" for category in categories])
             
             query = f"""
-            SELECT id, author, category, quote_text, posted
+            SELECT *
             FROM Quote 
             WHERE {' AND '.join(conditions)}
             ORDER BY RANDOM()
             LIMIT 1
             """
             
-            result = self.cursor.execute(query, params).fetchone()
+            result = self.cursor.execute(query,params).fetchone()
             
             if result:
                 return {
                     'id': result['id'],
                     'author': result['author'],
                     'category': result['category'],
-                    'quote_text': result['quote_text'],
+                    'quote': result['quote'],
                     'posted': bool(result['posted'])
                 }
             

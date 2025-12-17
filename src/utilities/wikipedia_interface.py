@@ -5,12 +5,9 @@ import io
 from dotenv import load_dotenv
 from SPARQLWrapper import SPARQLWrapper, JSON
 import random
-load_dotenv()
 
 class WikipediaInterface:
-    def __init__(self, env_path='.env'):
-        self.env_path = env_path
-        load_dotenv(self.env_path)
+    def __init__(self):
         self.USER_WIKI = os.getenv("USER_WIKI")
         if not self.USER_WIKI:
             raise ValueError("USER_WIKI not found in environment variables.")

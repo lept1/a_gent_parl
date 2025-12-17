@@ -1,13 +1,10 @@
 import requests
 import os
-from dotenv import load_dotenv
-load_dotenv()
 
 
 class TelegramInterface:
-    def __init__(self, env_path='.env'):
-        self.env_path = env_path
-        load_dotenv(self.env_path)
+    def __init__(self):
+        
         try:
             self.TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
         except KeyError:

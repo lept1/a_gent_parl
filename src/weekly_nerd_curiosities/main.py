@@ -26,9 +26,13 @@ import src.utilities.telegram_interface as telegram
 # Import generic utilities
 from src.utilities.config_manager import ConfigManager
 from src.utilities.database_manager import ContentDatabase
+from src.utilities.enhanced_logger import EnhancedLogger
 
 # Initialize configuration manager
 config_manager = ConfigManager('weekly_nerd_curiosities')
+
+logger = EnhancedLogger(module_name='weekly_nerd_curiosities',config_manager=config_manager)
+logger.setup_logging()
 
 # Load nerd-specific categories
 NERD_CATEGORIES = [
@@ -61,66 +65,7 @@ config_manager.set_validation_constants(
 # Ensure data directories exist
 config_manager.ensure_data_directories()
 
-def setup_logging():
-    """Configure logging for debugging and monitoring following existing project patterns."""
-    # Create logs directory if it doesn't exist
-    log_dir = config_manager.get_log_directory()
-    os.makedirs(log_dir, exist_ok=True)
-    
-    # Configure logging with both console and file output
-    log_file = os.path.join(log_dir, 'weekly_nerd_curiosities.log')
-    
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(),  # Console output
-            logging.FileHandler(log_file, mode='a', encoding='utf-8')  # File output with UTF-8 encoding
-        ]
-    )
-    
-    # Set specific log levels for external libraries to reduce noise
-    logging.getLogger('requests').setLevel(logging.WARNING)
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
-    
-    return logging.getLogger(__name__)
-
-
-def load_environment_variables():
-    """Load environment variables using existing project pattern."""
-    # Follow the existing project pattern - utilities use '../utilities/.env'
-    utilities_env_path = config_manager.get_env_path()
-    
-    if os.path.exists(utilities_env_path):
-        load_dotenv(utilities_env_path)
-        logger.info(f"Loaded environment variables from {utilities_env_path}")
-    else:
-        # Fallback to current directory .env (for development/testing)
-        load_dotenv()
-        logger.info("Loaded environment variables from current directory")
-    
-    # Validate required environment variables
-    required_vars = ['GEMINI_API_KEY', 'TELEGRAM_BOT_TOKEN', 'CHANNEL_ID', 'USER_WIKI', 'GITHUB_REPO', 'APP_NAME', 'VERSION']
-    missing_vars = []
-    
-    for var in required_vars:
-        value = os.getenv(var)
-        if not value or value.strip() == '':
-            missing_vars.append(var)
-    
-    if missing_vars:
-        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
-    
-    logger.info("All required environment variables are present")
-    
-    # Log configuration info (without sensitive values)
-    logger.info(f"USER_WIKI: {os.getenv('USER_WIKI')}")
-    logger.info(f"GITHUB_REPO: {os.getenv('GITHUB_REPO')}")
-    logger.info(f"APP_NAME: {os.getenv('APP_NAME')}")
-    logger.info(f"VERSION: {os.getenv('VERSION')}")
-    logger.info(f"CHANNEL_ID: {os.getenv('CHANNEL_ID')}")
-    logger.info("GEMINI_API_KEY: [CONFIGURED]")
-    logger.info("TELEGRAM_BOT_TOKEN: [CONFIGURED]")
+config_manager.load_environment_variables()
 
 
 # Initialize logger (will be properly configured in main)
@@ -194,7 +139,7 @@ def generate_nerd_post(article_data: dict) -> dict:
     logger.info(f"Generating content for article: {article_data['title']}")
     
     # Initialize LLM interface following existing project pattern
-    llm_interface = llm.LLMInterface(env_path=config_manager.get_env_path())
+    llm_interface = llm.LLMInterface()
     
     # Create the prompt
     user_prompt = create_content_generation_prompt(
@@ -333,7 +278,7 @@ def publish_to_telegram(post_content: str) -> dict:
     logger.info("Starting Telegram publishing process")
     
     # Initialize Telegram interface following existing project pattern
-    telegram_interface = telegram.TelegramInterface(env_path=config_manager.get_env_path())
+    telegram_interface = telegram.TelegramInterface()
     
     # Retry logic for Telegram publishing
     telegram_retry_attempts = config_manager.get_validation_constant('telegram_retry_attempts')
@@ -475,7 +420,7 @@ def get_random_nerd_article():
     logger.info("Starting article discovery process")
     
     # Initialize Wikipedia interface following existing project pattern
-    wiki_interface = wiki.WikipediaInterface(env_path=config_manager.get_env_path())
+    wiki_interface = wiki.WikipediaInterface()
     
     # Initialize database
     db_path = config_manager.get_module_database_path('nerd_curiosities.sqlite3')
@@ -545,17 +490,12 @@ def main():
     Initializes all interfaces and database connection, orchestrates the complete 
     article discovery to posting workflow with comprehensive error handling and logging.
     """
-    # Setup logging and environment
-    global logger
-    logger = setup_logging()
     
     logger.info("=" * 60)
     logger.info("Starting Weekly Nerd Curiosities module")
     logger.info("=" * 60)
     
     try:
-        # Load and validate environment variables
-        load_environment_variables()
         
         # Validate configuration
         config_validation = config_manager.validate_configuration()

@@ -10,6 +10,7 @@ import os
 import random
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+from dotenv import load_dotenv
 
 
 class ConfigManager:
@@ -120,7 +121,31 @@ class ConfigManager:
         Returns:
             str: Path to the .env file in utilities directory
         """
-        return str(self._project_root / "a_gent_parl" / "src" / "utilities" / ".env")
+        return str(self._project_root / "src" / "utilities" / ".env")
+
+    def load_environment_variables(self):
+        """Load environment variables using existing project pattern."""
+        # Follow the existing project pattern - utilities use '../utilities/.env'
+        utilities_env_path = self.get_env_path()
+        
+        if os.path.exists(utilities_env_path):
+            load_dotenv(utilities_env_path, verbose=True)
+        else:
+            raise FileNotFoundError(f"Environment file not found at {utilities_env_path}")
+        
+        # Validate required environment variables
+        required_vars = ['GEMINI_API_KEY', 'TELEGRAM_BOT_TOKEN', 'CHANNEL_ID', 'USER_WIKI', 'GITHUB_REPO', 'APP_NAME', 'VERSION']
+        missing_vars = []
+        
+        for var in required_vars:
+            value = os.getenv(var)
+            if not value or value.strip() == '':
+                missing_vars.append(var)
+        
+        if missing_vars:
+            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+
     
     def get_database_path(self, db_name: str) -> str:
         """

@@ -5,9 +5,7 @@ from google.genai import types
 import os
 
 class LLMInterface:
-    def __init__(self, env_path='.env'):
-        load_dotenv(env_path)
-        
+    def __init__(self):        
         self.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
         if not self.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY not found in environment variables.")
@@ -35,8 +33,9 @@ class LLMInterface:
                 return response.text
             except Exception as e:
                 print(f"Error occurred: {e}")
-                time.sleep(30)
-        return f"An error occurred while generating text. {e}"
+                time.sleep(30*(i+1))
+                if i == 2:
+                    raise Exception("Failed to generate content after 3 attempts.")
     
     def generate_content(self, system_instruction, contents, model="gemini-2.5-flash"):
         # Define the grounding tool
@@ -59,5 +58,6 @@ class LLMInterface:
                 return response.text
             except Exception as e:
                 print(f"Error occurred: {e}")
-                time.sleep(30)
-        return f"An error occurred while generating content. {e}"
+                time.sleep(30*(i+1))
+                if i == 2:
+                    raise Exception("Failed to generate content after 3 attempts.")
