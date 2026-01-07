@@ -2,33 +2,79 @@ import requests
 import sys
 import os
 import io
-from dotenv import load_dotenv
+import time
 from SPARQLWrapper import SPARQLWrapper, JSON
 import random
 
 class WikipediaInterface:
-    def __init__(self):
-        self.USER_WIKI = os.getenv("USER_WIKI")
-        if not self.USER_WIKI:
-            raise ValueError("USER_WIKI not found in environment variables.")
-        self.GITHUB_REPO = os.getenv("GITHUB_REPO")
-        if not self.GITHUB_REPO:
-            raise ValueError("GITHUB_REPO not found in environment variables.")
-        self.APP_NAME = os.getenv("APP_NAME")
-        if not self.APP_NAME:
-            raise ValueError("APP_NAME not found in environment variables.")
-        self.VERSION = os.getenv("VERSION")
-        if not self.VERSION:
-            raise ValueError("VERSION not found in environment variables.")
-        self.headers = {'User-Agent': f'{self.APP_NAME}/{self.VERSION} ({self.GITHUB_REPO}; {self.USER_WIKI})'}
+    def __init__(self, user_agent: str = None, rate_limit_delay: float = 1.0):
+        """
+        Initialize Wikipedia interface with independent configuration.
+        
+        Args:
+            user_agent: Custom user agent string. If None, will try environment variables
+                       or use sensible defaults
+            rate_limit_delay: Delay between requests to respect rate limits
+        """
+        self.rate_limit_delay = rate_limit_delay
+        self._last_request_time = 0
+        
+        # Build user agent with fallback chain
+        if user_agent:
+            self.user_agent_header = user_agent
+        else:
+            # Try to construct from environment variables
+            user_wiki = os.getenv("USER_WIKI", "")
+            github_repo = os.getenv("GITHUB_REPO", "")
+            app_name = os.getenv("APP_NAME", "a_gent_parl")
+            version = os.getenv("VERSION", "1.0")
+            
+            if user_wiki and github_repo:
+                self.user_agent_header = f'{app_name}/{version} ({github_repo}; {user_wiki})'
+            elif github_repo:
+                self.user_agent_header = f'{app_name}/{version} ({github_repo})'
+            else:
+                self.user_agent_header = f'{app_name}/{version} (https://github.com/user/repo)'
+        
+        self.headers = {'User-Agent': self.user_agent_header}
+        
+        # API endpoints
         self.WIKI_API_URL_METRICS = "https://wikimedia.org/api/rest_v1/metrics"
         self.WIKI_API_URL_SPARQL = "https://query.wikidata.org/sparql"
-        self.WIKI_API_URL = ["https://en.wikipedia.org/w/api.php", "https://de.wikipedia.org/w/api.php", "https://fr.wikipedia.org/w/api.php",
-                             "https://it.wikipedia.org/w/api.php", "https://es.wikipedia.org/w/api.php", "https://nl.wikipedia.org/w/api.php"]
+        self.WIKI_API_URL = [
+            "https://en.wikipedia.org/w/api.php", 
+            "https://de.wikipedia.org/w/api.php", 
+            "https://fr.wikipedia.org/w/api.php",
+            "https://it.wikipedia.org/w/api.php", 
+            "https://es.wikipedia.org/w/api.php", 
+            "https://nl.wikipedia.org/w/api.php"
+        ]
         self.WIKI_API_FILE_URL = "https://api.wikimedia.org/core/v1/commons/file"
-        self.user_agent = "WDQS-example Python/%s.%s" % (sys.version_info[0], sys.version_info[1])
+        
+        # SPARQL user agent for Wikidata queries
+        self.sparql_user_agent = f"WDQS-example Python/{sys.version_info[0]}.{sys.version_info[1]}"
+
+    def _respect_rate_limit(self):
+        """Ensure rate limiting between requests."""
+        if self.rate_limit_delay > 0:
+            current_time = time.time()
+            time_since_last = current_time - self._last_request_time
+            if time_since_last < self.rate_limit_delay:
+                time.sleep(self.rate_limit_delay - time_since_last)
+            self._last_request_time = time.time()
 
     def get_top_articles_by_country(self, country_code, date):
+        """
+        Get top articles by country for a specific date.
+        
+        Args:
+            country_code: Country code (e.g., 'IT', 'US')
+            date: Date in YYYY/MM/DD format
+            
+        Returns:
+            dict: API response with top articles data
+        """
+        self._respect_rate_limit()
         api_url = f"{self.WIKI_API_URL_METRICS}/pageviews/top-per-country/{country_code}/all-access/{date}"
         response = requests.get(api_url, headers=self.headers)
         if response.status_code != 200:
@@ -84,9 +130,16 @@ class WikipediaInterface:
 
     
     def sparql_get_results(self, query):
+        """
+        Execute SPARQL query against Wikidata endpoint.
         
-        # TODO adjust user agent; see https://w.wiki/CX6
-        sparql = SPARQLWrapper(self.WIKI_API_URL_SPARQL, agent=self.user_agent)
+        Args:
+            query: SPARQL query string
+            
+        Returns:
+            dict: Query results in JSON format
+        """
+        sparql = SPARQLWrapper(self.WIKI_API_URL_SPARQL, agent=self.sparql_user_agent)
         sparql.setQuery(query)
         sparql.setReturnFormat(JSON)
         return sparql.query().convert()
@@ -114,7 +167,17 @@ class WikipediaInterface:
         return total_dict
     
     def get_random_wiki_image(self, title):
+        """
+        Get a random image from a Wikipedia article.
+        
+        Args:
+            title: Wikipedia article title
+            
+        Returns:
+            io.BytesIO: Image bytes or None if no suitable image found
+        """
         for base_url_wiki in self.WIKI_API_URL:
+            self._respect_rate_limit()
             params = {
                 "action": "query",
                 "format": "json",
@@ -138,8 +201,12 @@ class WikipediaInterface:
             #remove any word before ":" from the title in any language
             img_title_clean = img_title['title'].split(":")[-1].strip()
             url_image = f"{self.WIKI_API_FILE_URL}/File:{img_title_clean.replace(' ', '_')}"
+            
+            self._respect_rate_limit()
             response = requests.get(url_image, headers=self.headers)
             data = response.json()
+            
+            self._respect_rate_limit()
             return io.BytesIO(requests.get(data['original']['url'],headers=self.headers).content)
 
     def get_category_members(self, category_name, lang='en', limit=50):
@@ -176,6 +243,7 @@ class WikipediaInterface:
         }
         
         try:
+            self._respect_rate_limit()
             response = requests.get(api_url, params=params, headers=self.headers)
             response.raise_for_status()
             data = response.json()
@@ -262,6 +330,7 @@ class WikipediaInterface:
             }
             
             try:
+                self._respect_rate_limit()
                 response = requests.get(api_url, params=params, headers=self.headers)
                 response.raise_for_status()
                 data = response.json()
@@ -354,11 +423,13 @@ class WikipediaInterface:
         
         try:
             # Fetch summary
+            self._respect_rate_limit()
             summary_response = requests.get(api_url, params=summary_params, headers=self.headers)
             summary_response.raise_for_status()
             summary_data = summary_response.json()
             
             # Fetch full content
+            self._respect_rate_limit()
             content_response = requests.get(api_url, params=content_params, headers=self.headers)
             content_response.raise_for_status()
             content_data = content_response.json()

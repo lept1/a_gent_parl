@@ -4,14 +4,15 @@ Generic Database Manager for a_gent_parl modules.
 This module provides a centralized database management system that can be
 used across all modules in the project. It handles generic content operations,
 duplicate checking, statistics, and specialized database operations.
+
+This module is completely independent and requires database paths to be provided
+as parameters. It does not perform any internal path resolution or configuration loading.
 """
 
 import sqlite3
-import os
 import json
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Union
-from pathlib import Path
+from typing import Optional, List, Dict, Any
 
 
 class ContentDatabase:
@@ -26,17 +27,17 @@ class ContentDatabase:
     - Flexible database schema management
     """
     
-    def __init__(self, db_name: str, table_name: str = 'ContentHistory'):
+    def __init__(self, db_path: str, table_name: str = 'ContentHistory'):
         """
         Initialize database connection and create schema if needed.
         
         Args:
-            db_name: Name or path to the database file
+            db_path: Full path to the database file
             table_name: Name of the table to use for content tracking
         """
-        self.db_name = db_name
+        self.db_path = db_path
         self.table_name = table_name
-        self.conn = sqlite3.connect(self.db_name)
+        self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
         
         # Enable foreign keys and set row factory for dict-like access
@@ -412,15 +413,15 @@ class QuoteDatabase(ContentDatabase):
     maintaining compatibility with existing quote_db.sqlite3 schema.
     """
     
-    def __init__(self, db_name: str = 'quote_db.sqlite3'):
+    def __init__(self, db_path: str):
         """
         Initialize quote database with compatibility for existing schema.
         
         Args:
-            db_name: Name or path to the quote database file
+            db_path: Full path to the quote database file
         """
-        self.db_name = db_name
-        self.conn = sqlite3.connect(self.db_name)
+        self.db_path = db_path
+        self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
         
         # Enable foreign keys and set row factory for dict-like access
@@ -503,7 +504,7 @@ class QuoteDatabase(ContentDatabase):
                     'id': result['id'],
                     'author': result['author'],
                     'category': result['category'],
-                    'quote': result['quote'],
+                    'quote_text': result['quote_text'],
                     'posted': bool(result['posted'])
                 }
             

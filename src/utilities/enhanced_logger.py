@@ -2,7 +2,7 @@
 Enhanced Logging Utility for a_gent_parl modules.
 
 This module provides comprehensive logging functionality with standardized configuration,
-log rotation, performance metrics tracking, and sensitive data masking capabilities.
+log rotation, and sensitive data masking capabilities.
 It extends the existing logging patterns established in weekly_nerd_curiosities
 to create a reusable utility for all modules.
 """
@@ -11,51 +11,48 @@ import os
 import logging
 import logging.handlers
 import re
-import time
-from datetime import datetime
-from typing import Dict, Any, Optional, List
-from pathlib import Path
-import json
-
-from .config_manager import ConfigManager
+from typing import Dict, Any, Optional
 
 
 class EnhancedLogger:
     """
-    Enhanced logging utility providing standardized logging configuration,
-    performance metrics tracking, and sensitive data masking.
+    Enhanced logging utility providing standardized logging configuration
+    and sensitive data masking.
     
     Features:
     - Consistent log formatting across modules
     - Automatic log rotation to prevent disk space issues
-    - Performance metrics logging
     - Sensitive data masking (API keys, tokens)
     - Module-specific log file creation
     - Both console and file output
     """
     
-    def __init__(self, module_name: str, config_manager: ConfigManager):
+    def __init__(self, module_name: str, log_dir: str, log_config: Optional[Dict[str, Any]] = None):
         """
         Initialize the EnhancedLogger for a specific module.
         
         Args:
             module_name: Name of the module using this logger
-            config_manager: ConfigManager instance for path resolution
+            log_dir: Directory path for log files
+            log_config: Optional logging configuration dictionary. If not provided, uses sensible defaults.
         """
         self.module_name = module_name
-        self.config_manager = config_manager
+        self.log_dir = log_dir
         self.logger: Optional[logging.Logger] = None
-        self.performance_logger: Optional[logging.Logger] = None
         
-        # Default logging configuration
-        self.log_config = {
+        # Default logging configuration with fallbacks
+        default_config = {
             'log_level': 'INFO',
             'max_log_file_size': 10 * 1024 * 1024,  # 10MB
             'backup_count': 5,
             'console_output': True,
-            'performance_logging': True,
             'mask_sensitive_data': True
         }
+        
+        # Merge provided config with defaults
+        self.log_config = default_config.copy()
+        if log_config:
+            self.log_config.update(log_config)
         
         # Sensitive data patterns for masking
         self.sensitive_patterns = [
@@ -87,9 +84,7 @@ class EnhancedLogger:
             logging.Logger: Configured logger instance for the module
         """
         # Ensure log directory exists
-        log_dir = self.config_manager.get_log_directory()
-        self.log_dir = log_dir
-        os.makedirs(log_dir, exist_ok=True)
+        os.makedirs(self.log_dir, exist_ok=True)
         
         # Create main logger
         logger_name = f"a_gent_parl.{self.module_name}"
@@ -113,7 +108,7 @@ class EnhancedLogger:
             self.logger.addHandler(console_handler)
         
         # File handler with rotation
-        log_file = os.path.join(log_dir, f'{self.module_name}.log')
+        log_file = os.path.join(self.log_dir, f'{self.module_name}.log')
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
             maxBytes=self.log_config['max_log_file_size'],
@@ -124,50 +119,20 @@ class EnhancedLogger:
         file_handler.setFormatter(formatter)
         self.logger.addHandler(file_handler)
         
-        # Set up performance logger if enabled
-        if self.log_config['performance_logging']:
-            self._setup_performance_logger(log_dir, formatter)
+
         
         # Configure external library log levels to reduce noise
         self._configure_external_loggers()
         
         self.logger.info(f"Enhanced logging initialized for module: {self.module_name}")
-        self.logger.info(f"Log directory: {log_dir}")
+        self.logger.info(f"Log directory: {self.log_dir}")
         self.logger.info(f"Log level: {self.log_config['log_level']}")
         self.logger.info(f"Max log file size: {self.log_config['max_log_file_size']} bytes")
         self.logger.info(f"Backup count: {self.log_config['backup_count']}")
         
         return self.logger
     
-    def _setup_performance_logger(self, log_dir: str, formatter: logging.Formatter) -> None:
-        """
-        Set up dedicated performance metrics logger.
-        
-        Args:
-            log_dir: Directory for log files
-            formatter: Log formatter to use
-        """
-        perf_logger_name = f"a_gent_parl.{self.module_name}.performance"
-        self.performance_logger = logging.getLogger(perf_logger_name)
-        self.performance_logger.setLevel(logging.INFO)
-        
-        # Clear any existing handlers
-        self.performance_logger.handlers.clear()
-        
-        # Performance log file with rotation
-        perf_log_file = os.path.join(log_dir, f'{self.module_name}_performance.log')
-        perf_handler = logging.handlers.RotatingFileHandler(
-            perf_log_file,
-            maxBytes=self.log_config['max_log_file_size'],
-            backupCount=self.log_config['backup_count'],
-            encoding='utf-8'
-        )
-        perf_handler.setLevel(logging.INFO)
-        perf_handler.setFormatter(formatter)
-        self.performance_logger.addHandler(perf_handler)
-        
-        # Prevent propagation to avoid duplicate logs
-        self.performance_logger.propagate = False
+
     
     def _configure_external_loggers(self) -> None:
         """Configure log levels for external libraries to reduce noise."""
@@ -184,45 +149,16 @@ class EnhancedLogger:
         for logger_name, level in external_loggers.items():
             logging.getLogger(logger_name).setLevel(level)
     
-    def log_performance_metric(self, operation: str, duration: float, **kwargs) -> None:
-        """
-        Log performance metrics for operations.
-        
-        Args:
-            operation: Name of the operation being measured
-            duration: Duration of the operation in seconds
-            **kwargs: Additional metadata to include in the log
-        """
-        if not self.performance_logger:
-            return
-        
-        metric_data = {
-            'timestamp': datetime.now().isoformat(),
-            'module': self.module_name,
-            'operation': operation,
-            'duration_seconds': round(duration, 3),
-            'success': kwargs.get('success', True),
-            'metadata': {k: v for k, v in kwargs.items() if k != 'success'}
-        }
-        
-        # Log as JSON for easy parsing
-        self.performance_logger.info(json.dumps(metric_data))
-        
-        # Also log human-readable version to main logger
-        if self.logger:
-            status = "SUCCESS" if metric_data['success'] else "FAILED"
-            self.logger.info(f"PERFORMANCE [{operation}] {status} - {duration:.3f}s")
+
     
-    def log_api_call(self, api_name: str, endpoint: str, status: str, 
-                     duration: float, **kwargs) -> None:
+    def log_api_call(self, api_name: str, endpoint: str, status: str, **kwargs) -> None:
         """
-        Log API call details with performance metrics.
+        Log API call details.
         
         Args:
             api_name: Name of the API service (e.g., 'Gemini', 'Telegram', 'Wikipedia')
             endpoint: API endpoint or method called
             status: Status of the call ('success', 'error', 'retry')
-            duration: Duration of the API call in seconds
             **kwargs: Additional metadata (response_code, error_message, etc.)
         """
         if not self.logger:
@@ -231,7 +167,7 @@ class EnhancedLogger:
         # Mask sensitive data in kwargs
         masked_kwargs = self._mask_dict_values(kwargs) if self.log_config['mask_sensitive_data'] else kwargs
         
-        log_message = f"API_CALL [{api_name}] {endpoint} - {status.upper()} ({duration:.3f}s)"
+        log_message = f"API_CALL [{api_name}] {endpoint} - {status.upper()}"
         
         if status == 'success':
             self.logger.info(log_message)
@@ -241,16 +177,6 @@ class EnhancedLogger:
         elif status == 'retry':
             attempt = masked_kwargs.get('attempt', 'N/A')
             self.logger.warning(f"{log_message} - Retry attempt: {attempt}")
-        
-        # Log performance metric
-        self.log_performance_metric(
-            f"api_call_{api_name.lower()}",
-            duration,
-            success=(status == 'success'),
-            endpoint=endpoint,
-            status=status,
-            **masked_kwargs
-        )
     
     def mask_sensitive_data(self, data: str) -> str:
         """
@@ -302,56 +228,7 @@ class EnhancedLogger:
         
         return masked_dict
     
-    def log_module_start(self, **kwargs) -> None:
-        """
-        Log module execution start with configuration details.
-        
-        Args:
-            **kwargs: Additional configuration details to log
-        """
-        if not self.logger:
-            return
-        
-        self.logger.info("=" * 60)
-        self.logger.info(f"Starting {self.module_name} module")
-        self.logger.info("=" * 60)
-        
-        # Log configuration validation
-        config_validation = self.config_manager.validate_configuration()
-        self.logger.info("Configuration validation results:")
-        for key, value in config_validation.items():
-            if isinstance(value, dict):
-                self.logger.info(f"  {key}:")
-                for sub_key, sub_value in value.items():
-                    self.logger.info(f"    {sub_key}: {sub_value}")
-            else:
-                self.logger.info(f"  {key}: {value}")
-        
-        # Log additional configuration details
-        for key, value in kwargs.items():
-            masked_value = self.mask_sensitive_data(str(value)) if isinstance(value, str) else value
-            self.logger.info(f"  {key}: {masked_value}")
-    
-    def log_module_end(self, success: bool = True, **kwargs) -> None:
-        """
-        Log module execution completion.
-        
-        Args:
-            success: Whether the module completed successfully
-            **kwargs: Additional completion details to log
-        """
-        if not self.logger:
-            return
-        
-        status = "successfully" if success else "with errors"
-        self.logger.info("=" * 60)
-        self.logger.info(f"{self.module_name} module completed {status}")
-        
-        # Log completion details
-        for key, value in kwargs.items():
-            self.logger.info(f"  {key}: {value}")
-        
-        self.logger.info("=" * 60)
+
     
     def log_error_with_context(self, error: Exception, context: Dict[str, Any]) -> None:
         """
@@ -375,17 +252,7 @@ class EnhancedLogger:
         # Log full traceback at debug level
         self.logger.debug("Full error traceback:", exc_info=True)
     
-    def create_execution_timer(self, operation_name: str) -> 'ExecutionTimer':
-        """
-        Create a context manager for timing operations.
-        
-        Args:
-            operation_name: Name of the operation being timed
-            
-        Returns:
-            ExecutionTimer: Context manager for timing the operation
-        """
-        return ExecutionTimer(self, operation_name)
+
     
     def update_log_config(self, **config_updates) -> None:
         """
@@ -398,66 +265,56 @@ class EnhancedLogger:
         
         if self.logger:
             self.logger.info(f"Updated logging configuration: {config_updates}")
-
-
-class ExecutionTimer:
-    """
-    Context manager for timing operations and automatically logging performance metrics.
-    """
     
-    def __init__(self, enhanced_logger: EnhancedLogger, operation_name: str):
+    def log_module_start(self, **kwargs) -> None:
         """
-        Initialize the execution timer.
+        Log module execution start with optional context.
         
         Args:
-            enhanced_logger: EnhancedLogger instance to use for logging
-            operation_name: Name of the operation being timed
+            **kwargs: Additional context information to log
         """
-        self.enhanced_logger = enhanced_logger
-        self.operation_name = operation_name
-        self.start_time: Optional[float] = None
-        self.end_time: Optional[float] = None
-        self.success = True
-        self.metadata = {}
+        if not self.logger:
+            return
+        
+        # Mask sensitive data in kwargs
+        masked_kwargs = self._mask_dict_values(kwargs) if self.log_config['mask_sensitive_data'] else kwargs
+        
+        self.logger.info(f"=== MODULE START: {self.module_name} ===")
+        
+        if masked_kwargs:
+            self.logger.info("Module context:")
+            for key, value in masked_kwargs.items():
+                self.logger.info(f"  {key}: {value}")
     
-    def __enter__(self) -> 'ExecutionTimer':
-        """Start timing the operation."""
-        self.start_time = time.time()
-        if self.enhanced_logger.logger:
-            self.enhanced_logger.logger.debug(f"Starting operation: {self.operation_name}")
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """End timing and log the performance metric."""
-        self.end_time = time.time()
-        
-        if exc_type is not None:
-            self.success = False
-            self.metadata['error_type'] = exc_type.__name__
-            self.metadata['error_message'] = str(exc_val)
-        
-        duration = self.end_time - self.start_time
-        
-        # Log performance metric
-        self.enhanced_logger.log_performance_metric(
-            self.operation_name,
-            duration,
-            success=self.success,
-            **self.metadata
-        )
-        
-        # Log completion message
-        if self.enhanced_logger.logger:
-            status = "completed" if self.success else "failed"
-            self.enhanced_logger.logger.debug(
-                f"Operation {self.operation_name} {status} in {duration:.3f}s"
-            )
-    
-    def add_metadata(self, **metadata) -> None:
+    def log_module_end(self, success: bool = True, **kwargs) -> None:
         """
-        Add metadata to be included in the performance log.
+        Log module execution end with success status and optional context.
         
         Args:
-            **metadata: Key-value pairs to include in the performance log
+            success: Whether the module execution was successful
+            **kwargs: Additional context information to log
         """
-        self.metadata.update(metadata)
+        if not self.logger:
+            return
+        
+        # Mask sensitive data in kwargs
+        masked_kwargs = self._mask_dict_values(kwargs) if self.log_config['mask_sensitive_data'] else kwargs
+        
+        status = "SUCCESS" if success else "FAILURE"
+        self.logger.info(f"=== MODULE END: {self.module_name} - {status} ===")
+        
+        if masked_kwargs:
+            self.logger.info("Module results:")
+            for key, value in masked_kwargs.items():
+                self.logger.info(f"  {key}: {value}")
+    
+    def get_logger(self) -> Optional[logging.Logger]:
+        """
+        Get the configured logger instance.
+        
+        Returns:
+            logging.Logger: The configured logger instance, or None if not set up
+        """
+        return self.logger
+
+
