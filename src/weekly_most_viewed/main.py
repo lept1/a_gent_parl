@@ -37,14 +37,6 @@ def main():
     top_articles_count = module_config.get('top_articles_count', 5)
     exclude_articles = module_config.get('exclude_articles', 'Main Page,Wikipedia')
     
-    # # Convert exclude_articles to list and add additional exclusions
-    # exclude_articles_list = [article.strip() for article in exclude_articles_str.split(',')]
-    # pages_to_exclude = exclude_articles_list + [
-    #     "Main_Page", "Special:Search", "Pagina_principale", "Speciale:Ricerca", 
-    #     "Wikipedia:Hauptseite", "Spezial:Suche", "Wikipedia:Portada", "Especial:Buscar", 
-    #     "Wikipédia:Accueil_principal","Spécial:Recherche","Wikipedia:Featured_pictures"
-    # ]
-    
     country_list = [country_code]
     
     logger.info(f"📋 Configuration: Top {top_articles_count} trending articles from {country_code}, period=week")

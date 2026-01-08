@@ -7,18 +7,17 @@ topics like comics, anime, manga, gaming, sci-fi, fantasy, and pop culture,
 then generates Italian-language social media posts for the Telegram channel.
 """
 
-import sys
-import os
-import logging
-import sqlite3
+# import sys
+# import os
+# import logging
+# import sqlite3
 import random
 import time
-from datetime import datetime
-from dotenv import load_dotenv
+# from datetime import datetime
+# # from dotenv import load_dotenv
 
 # Import configuration management
 from src.conf.config_manager import ConfigManager
-
 # Import independent utilities
 from src.utilities.wikipedia_interface import WikipediaInterface
 from src.utilities.llm_interface import LLMInterface
@@ -27,74 +26,6 @@ from src.utilities.database_manager import ContentDatabase
 from src.utilities.enhanced_logger import EnhancedLogger
 from src.utilities.path_manager import PathManager
 
-# Initialize configuration manager
-config = ConfigManager()
-
-# Initialize path manager
-path_manager = PathManager()
-
-# Get configuration for different components
-telegram_config = config.get_telegram_config()
-logging_config = config.get_logging_config()
-paths_config = config.get_paths_config()
-module_config = config.get_module_config('weekly_nerd_curiosities')
-
-# Get log directory and initialize logger
-log_dir = path_manager.ensure_directory_exists(paths_config['logs_subdir'])
-logger = EnhancedLogger(module_name='weekly_nerd_curiosities', log_dir=log_dir, log_config=logging_config)
-logger.setup_logging()
-
-# Load nerd-specific categories from configuration with correct capitalization
-NERD_CATEGORIES = module_config.get('nerd_categories', [
-    "Anime",
-    "Manga", 
-    "Comics",
-    "Video_games",
-    "Science_fiction",
-    "Fantasy",
-    "Tabletop_games",
-    "Animation",
-    "Japanese_popular_culture",
-    "Superhero_fiction",
-    "Role-playing_games",
-    "Collectible_card_games"
-])
-
-# Ensure data directories exist
-path_manager.ensure_directory_exists(paths_config['data_root'])
-path_manager.ensure_directory_exists(paths_config['databases_subdir'])
-path_manager.ensure_directory_exists(paths_config['cache_subdir'])
-
-# Load environment variables
-load_dotenv()
-
-
-# Logger is already initialized above with EnhancedLogger
-
-# LLM System Instruction for Italian Social Media Posts
-NERD_CURIOSITIES_SYSTEM_INSTRUCTION = """
-Sei un assistente AI specializzato nella creazione di contenuti coinvolgenti per i social media in ITALIANO su argomenti della cultura nerd, inclusi anime, manga, fumetti, videogiochi, fantascienza, fantasy e cultura pop.
-
-Il tuo compito è analizzare un articolo di Wikipedia ed estrarre 2-3 fatti sorprendenti, interessanti o poco conosciuti che affascinerebbero gli appassionati di cultura nerd.
-
-Formatta la tua risposta come un messaggio Telegram pronto per la pubblicazione con:
-- Un titolo accattivante con emoji pertinenti
-- 2-3 punti elenco con fatti interessanti (BREVI)
-- 3-5 hashtag rilevanti
-- Tono conversazionale e coinvolgente
-- IMPORTANTE: Lunghezza totale MASSIMO 450 caratteri (inclusi spazi e hashtag)
-
-Non usare:
-- **grassetto** 
-- _corsivo_ 
-
-Usa:
-- Emoji per esaltare un concentto
-- Emoji per punti elenco 
-
-Mantieni i fatti concisi e impattanti. Non includere altro testo o spiegazioni al di fuori del post formattato.
-Concentrati su curiosità che potrebbero sorprendere anche i fan più esperti dell'argomento.
-"""
 
 def create_content_generation_prompt(article_title: str, article_url: str, article_summary: str, article_content: str) -> str:
     """
@@ -214,7 +145,7 @@ def generate_nerd_post(article_data: dict) -> dict:
                     'category': article_data['category'],
                     'length': len(generated_content.strip()),
                     'hashtags': hashtags,
-                    'generated_at': datetime.now()
+                    'generated_at': time.time()
                 }
             else:
                 logger.warning(f"❌ Generated content failed validation: {validation_result['reason']}")
@@ -691,11 +622,91 @@ def main():
     article discovery to posting workflow with comprehensive error handling and logging.
     """
     start_time = time.time()
-    
+
+    global module_name
+    global config
+    global path_manager
+    global telegram_config
+    global logging_config
+    global paths_config
+    global module_config
+    global logger
+    global NERD_CATEGORIES
+    global NERD_CURIOSITIES_SYSTEM_INSTRUCTION
+
+    module_name='weekly_nerd_curiosities'
+    # Initialize configuration manager
+    config = ConfigManager()
+
+    # Initialize path manager
+    path_manager = PathManager()
+
+    # Get configuration for different components
+    telegram_config = config.get_telegram_config()
+    logging_config = config.get_logging_config()
+    paths_config = config.get_paths_config()
+    module_config = config.get_module_config(module_name)
+
+    # Get log directory and initialize logger
+    log_dir = path_manager.ensure_directory_exists(paths_config['logs_subdir'])
+    # Initialize logger with new architecture
+    enhanced_logger = EnhancedLogger(module_name=module_name, log_dir=log_dir, log_config=logging_config)
+    enhanced_logger.setup_logging()
+    logger = enhanced_logger.logger
+
+
+    # Load nerd-specific categories from configuration with correct capitalization
+    NERD_CATEGORIES = module_config.get('nerd_categories', [
+        "Anime",
+        "Manga", 
+        "Comics",
+        "Video_games",
+        "Science_fiction",
+        "Fantasy",
+        "Tabletop_games",
+        "Animation",
+        "Japanese_popular_culture",
+        "Superhero_fiction",
+        "Role-playing_games",
+        "Collectible_card_games"
+    ])
+
+    # Ensure data directories exist
+    path_manager.ensure_directory_exists(paths_config['data_root'])
+    path_manager.ensure_directory_exists(paths_config['databases_subdir'])
+    path_manager.ensure_directory_exists(paths_config['cache_subdir'])
+
+
+    # LLM System Instruction for Italian Social Media Posts
+    NERD_CURIOSITIES_SYSTEM_INSTRUCTION = """
+    Sei un assistente AI specializzato nella creazione di contenuti coinvolgenti per i social media in ITALIANO su argomenti della cultura nerd, inclusi anime, manga, fumetti, videogiochi, fantascienza, fantasy e cultura pop.
+
+    Il tuo compito è analizzare un articolo di Wikipedia ed estrarre una curiosità sorprendente, interessante o poco conosciuta che affascinerebbe gli appassionati di cultura nerd.
+
+    Formatta la tua risposta come un messaggio Telegram pronto per la pubblicazione con:
+    - Un titolo accattivante con emoji pertinenti
+    - (OPZIONALE) Una breve descrizione se articolo poco conosciuto
+    - Un unico fatto interessante (MEDIO-BREVE)
+    - 3-5 hashtag rilevanti
+    - Tono conversazionale e coinvolgente
+    - IMPORTANTE: Lunghezza totale MASSIMO 450 caratteri
+
+    Non usare:
+    - **grassetto** 
+    - _corsivo_ 
+
+    Usa:
+    - Emoji per esaltare un concentto
+    - Emoji per punti elenco 
+
+    Mantieni i fatti concisi e impattanti. Non includere altro testo o spiegazioni al di fuori del post formattato.
+    Concentrati su curiosità che potrebbero sorprendere anche i fan più esperti dell'argomento.
+    """
+
     logger.info("🚀 Starting weekly_nerd_curiosities module")
     logger.info(f"📋 Module purpose: Nerd culture content discovery and generation for Italian Telegram channel")
-    logger.info(f"🕐 Module started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info(f"🎯 Target: Discover, generate, and publish nerd culture curiosities")
+    #logger.info(f"🕐 Module started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    #logger.info(f"🎯 Target: Discover, generate, and publish nerd culture curiosities")
     
     try:
         # Phase 1: Configuration and Setup
@@ -880,7 +891,7 @@ def main():
         total_duration = time.time() - start_time
         logger.info("🎉 weekly_nerd_curiosities completed successfully")
         logger.info(f"⏱️ Total execution time: {total_duration:.2f}s")
-        logger.info(f"🕐 Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        #logger.info(f"🕐 Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         logger.info(f"📊 Performance breakdown:")
         logger.info(f"  🔧 Setup & Config: {setup_duration:.2f}s ({(setup_duration/total_duration)*100:.1f}%)")
         logger.info(f"  📥 Article Discovery: {phase2_duration:.2f}s ({(phase2_duration/total_duration)*100:.1f}%)")
@@ -892,7 +903,7 @@ def main():
     except Exception as e:
         total_duration = time.time() - start_time
         logger.error(f"❌ CRITICAL ERROR in Weekly Nerd Curiosities module after {total_duration:.2f}s: {str(e)}")
-        logger.error(f"🕐 Error occurred at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        #logger.error(f"🕐 Error occurred at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         logger.error("💡 Primary suggestion: Check logs above for specific error context and retry")
         logger.error("🔧 General recovery steps:")
         logger.error("  1. Wait 5-10 minutes and retry (may be temporary API issue)")
