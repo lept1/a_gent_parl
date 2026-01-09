@@ -3,9 +3,8 @@
 __pycache__/
 *.pyc
 .DS_Store
-*.sqlite3
 *.pdf
 *_files/
 *.html
-data/
-*log
+cache/
+logs/
