@@ -8,3 +8,4 @@ __pycache__/
 *.html
 cache/
 logs/
+databases/
