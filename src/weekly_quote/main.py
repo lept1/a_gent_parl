@@ -53,7 +53,7 @@ def main():
     
     # Module startup logging with configuration summary
     logger.logger.info("🚀 Starting weekly_quote module")
-    logger.logger.info(f"📋 Configuration: {len(nerd_categories)} categories excluded")
+    logger.logger.info(f"📋 Configuration: {len(nerd_categories)} categories")
     
     try:
         # Phase 1: Setup and Database Connection
@@ -82,20 +82,20 @@ def main():
         
         # Phase 2: Quote Selection
         logger.logger.info("📥 Starting quote selection phase")
-        logger.logger.info(f"🚫 Excluding categories: {', '.join(nerd_categories)}")
+        logger.logger.info(f"🚫 Nerd categories: {', '.join(nerd_categories)}")
         
         quote_data = quote_db.get_random_unposted_quote(categories=nerd_categories)
         
         if not quote_data:
             logger.logger.warning("⚠️ No unposted quotes found matching criteria")
-            logger.logger.info(f"🔍 Context: Searched for quotes excluding {len(nerd_categories)} categories")
+            logger.logger.info(f"🔍 Context: Searched for quotes in {len(nerd_categories)} categories")
             logger.logger.info("💡 Suggestion: Check if all quotes have been posted or add new quotes to database")
             return
         
         # Extract and log quote information
         quote_id = quote_data['id']
         author = quote_data['author']
-        quote = quote_data['quote']
+        quote = quote_data['quote_text']
         category = quote_data['category']
         
         logger.logger.info(f"✅ Quote selected successfully: ID={quote_id}, Author='{author}', Category='{category}'")

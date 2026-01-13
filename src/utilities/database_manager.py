@@ -501,11 +501,11 @@ class QuoteDatabase(ContentDatabase):
             
             if result:
                 return {
-                    'id': result['id'],
-                    'author': result['author'],
-                    'category': result['category'],
-                    'quote_text': result['quote_text'],
-                    'posted': bool(result['posted'])
+                    'id': result[0],
+                    'author': result[1],
+                    'category': result[2],
+                    'quote_text': result[3],
+                    'posted': bool(result[4])
                 }
             
             return None
@@ -550,11 +550,11 @@ class QuoteDatabase(ContentDatabase):
             
             if result:
                 return {
-                    'id': result['id'],
-                    'author': result['author'],
-                    'category': result['category'],
-                    'quote_text': result['quote_text'],
-                    'posted': bool(result['posted'])
+                    'id': result[0],
+                    'author': result[1],
+                    'category': result[2],
+                    'quote_text': result[3],
+                    'posted': bool(result[4])
                 }
             
             return None
@@ -592,11 +592,11 @@ class QuoteDatabase(ContentDatabase):
             
             return [
                 {
-                    'id': row['id'],
-                    'author': row['author'],
-                    'category': row['category'],
-                    'quote_text': row['quote_text'],
-                    'posted': bool(row['posted'])
+                    'id': row[0],
+                    'author': row[1],
+                    'category': row[2],
+                    'quote_text': row[3],
+                    'posted': bool(row[4])
                 }
                 for row in results
             ]
