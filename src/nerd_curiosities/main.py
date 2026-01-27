@@ -634,7 +634,7 @@ def main():
     global NERD_CATEGORIES
     global NERD_CURIOSITIES_SYSTEM_INSTRUCTION
 
-    module_name='weekly_nerd_curiosities'
+    module_name='nerd_curiosities'
     # Initialize configuration manager
     config = ConfigManager()
 

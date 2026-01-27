@@ -8,7 +8,7 @@ import datetime as dt
 import time
 
 def main():
-    module_name = 'monthly_psnews'
+    module_name = 'ps_news'
     
     # Load configuration
     config = ConfigManager()

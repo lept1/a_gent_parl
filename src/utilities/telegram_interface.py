@@ -85,12 +85,13 @@ class TelegramInterface:
         if last_exception:
             raise Exception(f"Request failed after {self.retry_attempts} attempts") from last_exception
 
-    def send_message(self, text: str) -> Dict[str, Any]:
+    def send_message(self, text: str, parse_mode: str = "Markdown") -> Dict[str, Any]:
         """
         Send a text message to the configured Telegram channel.
         
         Args:
             text: Message text to send
+            parse_mode: Parse mode for the message (default is Markdown)
             
         Returns:
             Telegram API response as dictionary
@@ -102,7 +103,7 @@ class TelegramInterface:
         payload = {
             "chat_id": self.channel_id,
             "text": text,
-            "parse_mode": "Markdown",
+            "parse_mode": parse_mode,
         }
         return self._make_request_with_retry(url, payload)
 

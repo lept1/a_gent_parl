@@ -9,7 +9,7 @@ import os
 
 
 def main():
-  module_name = 'weekly_happened_today'
+  module_name = 'happened_today'
   
   # Load environment variables from utilities/.env file
   utilities_env_path = os.path.join(os.path.dirname(__file__), '..', 'utilities', '.env')

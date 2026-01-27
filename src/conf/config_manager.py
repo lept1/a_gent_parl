@@ -87,17 +87,17 @@ class ConfigManager:
                 'cache_subdir': 'cache',
                 'databases_subdir': 'databases'
             },
-            'weekly_quote': {
+            'nerd_quote': {
                 'nerd_categories': 'anime,manga,comics,video games,science fiction,fantasy,tabletop games,animation,japanese popular culture,superhero fiction,Role-playing games,collectible card games',
                 'post_template': 'Quote of the day',
                 'retry_attempts': 3
             },
-            'weekly_most_viewed': {
+            'wiki_most_viewed': {
                 'country_code': 'IT',
                 'top_articles_count': 5,
                 'exclude_articles': 'Main Page,Wikipedia'
             },
-            'monthly_psnews': {
+            'ps_news': {
                 'content_length_min': 800,
                 'content_length_max': 1200,
                 'include_free_games': True
@@ -107,14 +107,18 @@ class ConfigManager:
                 'max_image_size': '5MB',
                 'caption_length_max': 300
             },
-            'weekly_happened_today': {
+            'happened_today': {
                 'professions': 'comics artist,cartoonist,mangaka,fantasy writer,animator',
                 'historical_period_days': 7
             },
-            'weekly_nerd_curiosities': {
+            'nerd_curiosities': {
                 'nerd_categories': 'Anime,Manga,Comics,Video_games,Science_fiction,Fantasy,Tabletop_games,Animation,Japanese_popular_culture,Superhero_fiction,Role-playing_games,Collectible_card_games',
                 'content_style': 'casual',
                 'hashtag_count': 5
+            },
+            'youtube_trend': {
+                'country_code': 'IT',
+                'top_videos_count': 10
             }
         }
     

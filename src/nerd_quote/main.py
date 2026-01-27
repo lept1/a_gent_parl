@@ -24,7 +24,7 @@ SYSTEM_INSTRUCTION = """
 """
 
 def main():
-    module_name = 'weekly_quote'
+    module_name = 'nerd_quote'
     
     # Load configuration
     config = ConfigManager()

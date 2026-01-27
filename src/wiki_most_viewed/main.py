@@ -7,7 +7,7 @@ from src.utilities.path_manager import PathManager
 import time
 
 def main():
-    module_name = 'weekly_most_viewed'
+    module_name = 'wiki_most_viewed'
     
     # Load configuration
     config = ConfigManager()
