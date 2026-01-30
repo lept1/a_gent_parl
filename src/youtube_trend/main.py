@@ -1,6 +1,6 @@
 from src.conf.config_manager import ConfigManager
 from src.utilities.youtube_interface import YouTubeInterface
-#from src.utilities.llm_interface import LLMInterface
+from src.utilities.llm_interface import LLMInterface
 from src.utilities.telegram_interface import TelegramInterface
 from src.utilities.enhanced_logger import EnhancedLogger
 from src.utilities.path_manager import PathManager
@@ -74,31 +74,32 @@ def main():
 
 
 
-        response = f"&#127909; &#128293; &#x23;YouTrends {time.strftime('%d/%m/%Y')} \n\n"
+        query = "These are the current trending YouTube videos:\n\n"
         i=0
-        emoticon_numbers = ['&#129351;', '&#129352;', '&#129353;', '&#128227;']
+        #emoticon_numbers = ['&#129351;', '&#129352;', '&#129353;', '&#128227;']
         for video in top_videos['items']:
-            response += f"{emoticon_numbers[i]} <a href='https://www.youtube.com/watch?v={video['id']}'>{video['snippet']['title']}</a>\n"
+            query += f"ID:{video['id']}\n"
+            query += f"TITLE:{video['snippet']['title']}</a>\n"
             # response += f"titolo: {video['snippet']['title']}\n"
             # response += f"link: https://www.youtube.com/watch?v={video['id']}\n"
             #response += f"descrizione: {video['snippet']['description']}\n"
-            response += f"Views: {video['statistics'].get('viewCount', 'N/A')}\n\n"
+            query += f"Views: {video['statistics'].get('viewCount', 'N/A')}\n\n"
             if i < 3:
                 i += 1
 
-        # logger.info(f"📝 Query prepared - {len(query)} characters, {len(top_videos['items'])} videos")
+        logger.info(f"📝 Query prepared - {len(query)} characters, {len(top_videos['items'])} videos")
         
-        # # Initialize LLM interface (uses environment variables by default)
-        # llm_interface = LLMInterface()
-        # logger.info("🔗 LLM interface initialized")
+        # Initialize LLM interface (uses environment variables by default)
+        llm_interface = LLMInterface()
+        logger.info("🔗 LLM interface initialized")
         
-        # generation_start = time.time()
-        # logger.info("🎯 Generating Italian social media content for trending articles")
+        generation_start = time.time()
+        logger.info("🎯 Generating Italian social media content for trending articles")
         
-        # response = llm_interface.generate_text(SYSTEM_INSTRUCTION, query)
+        response = llm_interface.generate_text(SYSTEM_INSTRUCTION, query)
         
-        # generation_duration = time.time() - generation_start
-        # logger.info(f"⏱️ Content generation completed in {generation_duration:.2f}s")
+        generation_duration = time.time() - generation_start
+        logger.info(f"⏱️ Content generation completed in {generation_duration:.2f}s")
         # logger.info(f"📊 Performance: {len(response)} chars generated, {len(response)/generation_duration:.0f} chars/sec")
         # logger.info("✅ Content generation phase completed")
 
@@ -124,7 +125,7 @@ def main():
         # Module completion
         total_duration = time.time() - start_time
         logger.info(f"🎉 youtube_trend completed successfully in {total_duration:.2f}s")
-        logger.info(f"📊 Summary: {len(top_videos)} videos processed, {len(response)} chars generated and published")
+        logger.info(f"📊 Summary: {top_videos_count} videos processed, {len(response)} chars generated and published")
         
     except Exception as e:
         logger.error(f"❌ youtube_trend failed: {str(e)}")
@@ -142,22 +143,32 @@ def main():
         
         raise
 
-# SYSTEM_INSTRUCTION = """
-#   You are an AI assistant specialized in generating engaging content for social media in ITALIAN.
-#   Respond only with the final report, ready to be posted on Telegram, formatted as follows:
+SYSTEM_INSTRUCTION = """
+  You are an AI assistant specialized in generating engaging content for social media in ITALIAN.
+  You will receive a list of trending YouTube videos with their titles, view counts, and links, as follows:
+    ID:video_id_1
+    TITLE:Video Title 1
+    Views: X
 
-#     #YouTrends <DATE> 📅
+    ID:video_id_2
+    TITLE:Video Title 2
+    Views: Y
 
-#     <EMOTICON NUMBER 1> Video Title 1 <EMOTICON RELEVANT TO THE VIDEO>
-#     <EMOTICON EYES> Views: X
-#     <EMOTICON LINK> Link: <YOUTUBE VIDEO LINK>
+    ...
 
-#     <EMOTICON NUMBER 2> Video Title 2 <EMOTICON RELEVANT TO THE VIDEO>
-#     <EMOTICON EYES> Views: Y
-#     <EMOTICON LINK> Link: <YOUTUBE VIDEO LINK>
-#     ...
-#   Do not include any other text or explanation.
-# """
+  Your task is to create a concise and engaging report formatted in HTML, suitable for posting on Telegram, summarizing the trending videos. Use relevant emoticons to enhance the presentation.
+    The format should be as follows:
+
+    &#127909; &#128293; &#x23;YouTrends <DATE>
+    1. &#129351; <a href='https://www.youtube.com/watch?v={ID}'>{TITLE}</a> - <Views> views
+        SHORT DESCRIPTION OF THE VIDEO IN ITALIAN (1-2 SENTENCES) OR OF WHY IT IS TRENDING
+    2. &#129352; <a href='https://www.youtube.com/watch?v={ID}'>{TITLE}</a> - <Views> views
+        SHORT DESCRIPTION OF THE VIDEO IN ITALIAN (1-2 SENTENCES) OR OF WHY IT IS TRENDING
+    3. &#129353; <a href='https://www.youtube.com/watch?v={ID}'>{TITLE}</a> - <Views> views
+        SHORT DESCRIPTION OF THE VIDEO IN ITALIAN (1-2 SENTENCES) OR OF WHY IT IS TRENDING
+    ...
+  Do not include any other text or explanation.
+"""
 
 if __name__ == "__main__":
     main()
