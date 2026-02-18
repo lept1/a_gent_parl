@@ -733,3 +733,89 @@ class QuoteDatabase(ContentDatabase):
         except sqlite3.Error as e:
             print(f"Error during migration: {e}")
             return False
+
+class NewsDatabase(ContentDatabase):
+    """
+    Specialized database operations for news management.
+    
+    Extends ContentDatabase to provide news-specific functionality while
+    maintaining compatibility with existing news_db.sqlite3 schema.
+    """
+    
+    def __init__(self, db_path: str):
+        """
+        Initialize news database with compatibility for existing schema.
+        
+        Args:
+            db_path: Full path to the news database file
+        """
+        self.db_path = db_path
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+        
+        # Enable foreign keys and set row factory for dict-like access
+        self.cursor.execute("PRAGMA foreign_keys = ON")
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
+        
+        # Check if legacy News table exists, if not create it
+        self._ensure_news_schema()
+
+    def _ensure_news_schema(self) -> None:
+        """
+        Ensure the News table exists with the expected schema.
+        Creates the table if it doesn't exist.
+        """
+        try:
+            # Check if News table exists
+            self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='News';")
+            table_exists = self.cursor.fetchone()
+            
+            if not table_exists:
+                # Create News table with legacy schema
+                create_news_table = """
+                CREATE TABLE News (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT,
+                    url TEXT UNIQUE,
+                    source TEXT,
+                    published_date TIMESTAMP,
+                    posted INTEGER DEFAULT 0
+                )
+                """
+                
+                # Create indexes
+                create_indexes = [
+                    "CREATE INDEX IF NOT EXISTS idx_news_posted ON News(posted)",
+                    "CREATE INDEX IF NOT EXISTS idx_news_category ON News(category)",
+                    "CREATE INDEX IF NOT EXISTS idx_news_published_date ON News(published_date)"
+                ]
+                
+                self.cursor.execute(create_news_table)
+                for index_sql in create_indexes:
+                    self.cursor.execute(index_sql)
+                self.conn.commit()
+                
+        except sqlite3.Error as e:
+            print(f"Error ensuring news schema: {e}")
+            raise
+
+    def mark_news_posted(self, news_id: int) -> bool:
+        """
+        Mark a news item as posted by its ID.
+        
+        Args:
+            news_id: The ID of the news item to mark as posted
+        Returns:
+            bool: True if successfully marked, False otherwise
+        """
+        try:
+            update_sql = "UPDATE News SET posted = 1 WHERE id = ?"
+            self.cursor.execute(update_sql, (news_id,))
+            self.conn.commit()
+            
+            # Check if any rows were affected
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            print(f"Error marking news as posted: {e}")
+            return False
