@@ -6,22 +6,23 @@ from src.utilities.enhanced_logger import EnhancedLogger
 from src.utilities.path_manager import PathManager
 import sqlite3
 import os
-import feedparser
+
 
 SYSTEM_INSTRUCTION = """
-  You are an AI assistant that generates hashtags for quotes and content for social media in ITALIAN.
-  Generate 3 relevant hashtags based on the quote and author provided. Use popular and trending hashtags where applicable. 
-  Format the hashtags as a space-separated list, each starting with a # symbol, without any additional text or punctuation.
-  Respond only with the final report, ready to be posted on Telegram, formatted as follows:
+  You are an AI assistant and your task is to create a concise and engaging Telegram post that summarizes the most relevant news items from the provided list.
+  The format of the news items MUST BE as follows:
 
-    #QuoteOfTheDay <GENERATED HASHTAGS> 
+    #TechNews #LatestUpdates #TechTrends
 
-    ***<QUOTE TEXT TRANSLATED IN ITALIAN>***
-    _<AUTHOR NAME>_
+    1. [TITLE]([URL])
+       [HASHTAGS RELATED TO THE NEWS ITEM]
+       [PUBLISHED DATE OF THE NEWS]
+       [SHORT DESCRIPTION IN ITALIAN OF THE NEWS AND WHY IT'S IMPORTANT]
 
-    <SHORT DESCRIPTION OF THE AUTHOR AND WHERE THE QUOTE IS FROM>
+... (repeat for each news item)
 
-  Do not include any other text or explanation.
+
+IMPORTANT : Do not include any other text or explanation.
 """
 
 def main():
@@ -47,82 +48,65 @@ def main():
     logger = EnhancedLogger(module_name, log_dir, logging_config)
     logger.setup_logging()
     
-##############    # Get tech news categories from module configuration
-    tech_categories = module_config.get('tech_news_categories', [])
-    if isinstance(tech_categories, str):
-        tech_categories = [cat.strip() for cat in tech_categories.split(',')]
+    # Extract module-specific settings
+    hashtag_count = module_config.get('hashtag_count', 5)
+    top_news_count = module_config.get('top_news_count', 5)
     
     # Module startup logging with configuration summary
-    logger.logger.info("🚀 Starting tech_news module")
-    logger.logger.info(f"📋 Configuration: {len(tech_categories)} categories")
+    logger.logger.info("Starting tech_news module")
     
     try:
         # Phase 1: Setup and Database Connection
-        logger.logger.info("🔧 Initializing module components")
-        db_name = database_config['default_quote_db']
+        logger.logger.info("Initializing module components")
+        db_name = database_config['default_news_db']
         db_path = path_manager.get_database_path(db_name, paths_config.get('databases_subdir'))
-        logger.logger.info(f"📁 Database path: {db_path}")
+        logger.logger.info(f"Database path: {db_path}")
         
-        quote_db = QuoteDatabase(db_path)
+        news_db = NewsDatabase(db_path)
         
         # Test database connection with detailed context
         try:
-            cursor = quote_db.conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM Quote')
-            total_quotes = cursor.fetchone()[0]
-            cursor.execute('SELECT COUNT(*) FROM Quote WHERE posted = 0')
-            unposted_quotes = cursor.fetchone()[0]
-            logger.logger.info(f"✅ Database connected successfully: {total_quotes} total quotes, {unposted_quotes} unposted")
+            cursor = news_db.conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM News')
+            total_news = cursor.fetchone()[0]
+            cursor.execute('SELECT COUNT(*) FROM News WHERE posted = 0')
+            unposted_news = cursor.fetchone()[0]
+            logger.logger.info(f"Database connected successfully: {total_news} total news, {unposted_news} unposted")
         except sqlite3.Error as e:
-            logger.logger.error(f"❌ Database connection failed: {str(e)}")
-            logger.logger.error(f"🔍 Context: Attempting to connect to {db_path}")
-            logger.logger.error(f"💡 Suggestion: Verify database file exists and has correct permissions")
+            logger.logger.error(f"Database connection failed: {str(e)}")
+            logger.logger.error(f"Context: Attempting to connect to {db_path}")
+            logger.logger.error(f"Suggestion: Verify database file exists and has correct permissions")
             raise
         
-        logger.logger.info("✅ Module initialization completed")
+        logger.logger.info("Module initialization completed")
         
-        # Phase 2: Quote Selection
-        logger.logger.info("📥 Starting quote selection phase")
-        logger.logger.info(f"🚫 Nerd categories: {', '.join(nerd_categories)}")
+        # Phase 2: Select unposted news
+        logger.logger.info("Selecting unposted news from database")
+        news_data = news_db.get_unposted_content(category='tech')  # Pass category filter to select only tech news
         
-        quote_data = quote_db.get_random_unposted_quote(categories=nerd_categories)
-        
-        if not quote_data:
-            logger.logger.warning("⚠️ No unposted quotes found matching criteria")
-            logger.logger.info(f"🔍 Context: Searched for quotes in {len(nerd_categories)} categories")
-            logger.logger.info("💡 Suggestion: Check if all quotes have been posted or add new quotes to database")
+        if not news_data:
+            logger.logger.warning("No unposted news found matching criteria")
+            logger.logger.info("Suggestion: Check if all news have been posted or add new news to database")
             return
         
-        # Extract and log quote information
-        quote_id = quote_data['id']
-        author = quote_data['author']
-        quote = quote_data['quote_text']
-        category = quote_data['category']
-        
-        logger.logger.info(f"✅ Quote selected successfully: ID={quote_id}, Author='{author}', Category='{category}'")
-        logger.logger.info(f"📊 Quote length: {len(quote)} characters")
-        
-        # Phase 3: Content Generation
-        logger.logger.info("🤖 Starting content generation phase")
-        logger.logger.info(f"📝 Input: Quote by {author} ({len(quote)} chars)")
-        
+        # Pass all news data to the content generation phase 
         try:
             # Initialize LLM interface (uses environment variables by default)
             gemini = LLMInterface()
-            query = f"quote: {quote}\nauthor: {author}"
+            query=f"Select the {top_news_count} most relevant news items, add {hashtag_count} hashtags and generate a short, engaging Telegram post summarizing them:\n\n"
+            for news_item in news_data:
+                query += f" - Title: {news_item['title']} URL: {news_item['url']} Published Date: {news_item['published_date']}\n\n"
+            
             telegram_post = gemini.generate_text(SYSTEM_INSTRUCTION, query)
             
-            logger.logger.info(f"✅ Content generated successfully: {len(telegram_post)} characters")
-            logger.logger.info(f"📊 Generated content preview: {telegram_post[:100]}...")
+            logger.logger.info(f"Content generated successfully: {len(telegram_post)} characters")
             
         except Exception as e:
-            logger.logger.error(f"❌ Content generation failed: {str(e)}")
-            logger.logger.error(f"🔍 Context: Processing quote ID {quote_id} by {author}")
-            logger.logger.error(f"💡 Suggestion: Check Gemini API key and network connectivity")
+            logger.logger.error(f"Content generation failed: {str(e)}")
             raise
         
         # Phase 4: Publication
-        logger.logger.info("📤 Starting content publication phase")
+        logger.logger.info("Starting content publication phase")
         
         try:
             # Initialize Telegram interface with configuration
@@ -131,50 +115,36 @@ def main():
                 retry_delay=telegram_config['retry_delay']
             )
             telegram_bot.send_message(telegram_post)
-            logger.logger.info("✅ Content published to Telegram successfully")
-            logger.logger.info(f"📊 Published content length: {len(telegram_post)} characters")
+            logger.logger.info("Content published to Telegram successfully")
             
         except Exception as e:
-            logger.logger.error(f"❌ Telegram publication failed: {str(e)}")
-            logger.logger.error(f"🔍 Context: Attempting to publish quote ID {quote_id}")
-            logger.logger.error(f"💡 Suggestion: Check Telegram bot token and channel permissions")
+            logger.logger.error(f"Telegram publication failed: {str(e)}")
             raise
         
         # Phase 5: Database Update
-        logger.logger.info("💾 Updating database status")
+        logger.logger.info("Updating database status")
         
-        try:
-            success = quote_db.mark_quote_posted(quote_id)
-            if success:
-                logger.logger.info(f"✅ Quote ID {quote_id} marked as posted successfully")
-            else:
-                logger.logger.error(f"❌ Failed to mark quote ID {quote_id} as posted")
-                logger.logger.error(f"💡 Suggestion: Check database write permissions and connection")
+        news_ids = [item['id'] for item in news_data]
+        success, message = news_db.mark_news_posted(news_ids)  # Mark all news items as posted
+        if success:
+            logger.logger.info(f"News items with IDs {news_ids} marked as posted successfully")
+        else:
+            logger.logger.error(f"Failed to mark news items with IDs {news_ids} as posted: {message}")
                 
-        except Exception as e:
-            logger.logger.error(f"❌ Database update failed: {str(e)}")
-            logger.logger.error(f"🔍 Context: Marking quote ID {quote_id} as posted")
-            logger.logger.error(f"💡 Suggestion: Verify database is not locked and has write permissions")
-            # Don't raise here as the post was successful
-        
         # Module completion
-        logger.logger.info("🎉 weekly_quote completed successfully")
-        logger.logger.info(f"📊 Summary: Quote ID {quote_id} by {author} published and marked as posted")
-        
-        print(telegram_post)
+        logger.logger.info("News posting completed successfully")
         
     except Exception as e:
-        logger.logger.error(f"❌ weekly_quote failed: {str(e)}")
-        logger.logger.error(f"💡 Suggestion: Check logs above for specific error context and remediation steps")
+        logger.logger.error(f"News posting module failed: {str(e)}")
         raise
     finally:
         # Ensure database connection is closed
         try:
-            if 'quote_db' in locals():
-                quote_db.close()
-                logger.logger.info("🔒 Database connection closed")
+            if 'news_db' in locals():
+                news_db.close()
+                logger.logger.info("Database connection closed")
         except Exception as e:
-            logger.logger.warning(f"⚠️ Error closing database connection: {str(e)}")
+            logger.logger.warning(f"Error closing database connection: {str(e)}")
     
 if __name__ == "__main__":
     main()

@@ -78,7 +78,8 @@ class ConfigManager:
                 'sensitive_data_masking': True
             },
             'database': {
-                'default_quote_db': 'quote_db.sqlite3'
+                'default_quote_db': 'quote_db.sqlite3',
+                'default_news_db': 'news_db.sqlite3'
             },
             'paths': {
                 'data_root': 'data',
@@ -119,6 +120,9 @@ class ConfigManager:
             'youtube_trend': {
                 'country_code': 'IT',
                 'top_videos_count': 10
+            },
+            'feed_store': {
+                'tech_feed': 'https://www.techradar.com/rss,https://research.google/blog/rss/,https://www.marktechpost.com/feed/,https://machinelearningmastery.com/feed/,https://bair.berkeley.edu/blog/feed.xml,https://aws.amazon.com/blogs/aws/feed/,https://azure.microsoft.com/en-us/blog/feed/,https://cloud.google.com/blog/rss.xml,https://cloudcomputing-today.com/feed/,https://feeds.arstechnica.com/arstechnica/index/,https://www.theverge.com/rss/index.xml,https://news.ycombinator.com/rss,https://www.infoworld.com/category/cloud-computing/index.rss,https://www.corrierecomunicazioni.it/feed/,https://inno3.it/feed/'
             }
         }
     
@@ -240,7 +244,9 @@ class ConfigManager:
             Dict[str, Any]: Database configuration
         """
         return {
-            'default_quote_db': self._get_str('database', 'default_quote_db', 'quote_db.sqlite3')
+            'default_quote_db': self._get_str('database', 'default_quote_db', 'quote_db.sqlite3'),
+            'default_news_db': self._get_str('database', 'default_news_db', 'news_db.sqlite3')
+            
         }
     
     def get_paths_config(self) -> Dict[str, Any]:

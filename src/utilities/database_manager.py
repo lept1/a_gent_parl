@@ -742,13 +742,15 @@ class NewsDatabase(ContentDatabase):
     maintaining compatibility with existing news_db.sqlite3 schema.
     """
     
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, table_name: str = 'News'):
         """
         Initialize news database with compatibility for existing schema.
         
         Args:
             db_path: Full path to the news database file
+            table_name: The name of the news table (default is 'News')
         """
+        self.table_name = table_name
         self.db_path = db_path
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
@@ -779,6 +781,7 @@ class NewsDatabase(ContentDatabase):
                     title TEXT,
                     url TEXT UNIQUE,
                     source TEXT,
+                    category TEXT,
                     published_date TIMESTAMP,
                     posted INTEGER DEFAULT 0
                 )
@@ -800,22 +803,93 @@ class NewsDatabase(ContentDatabase):
             print(f"Error ensuring news schema: {e}")
             raise
 
-    def mark_news_posted(self, news_id: int) -> bool:
+    def get_unposted_content(self, feed_urls: Optional[List[str]] = None, category: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Mark a news item as posted by its ID.
+        Get unposted news items, optionally filtered by feed URLs and category.
         
         Args:
-            news_id: The ID of the news item to mark as posted
+            feed_urls: Optional list of feed URLs to filter by
+            category: Optional category to filter by (added for better filtering in tech_news module)
+        """
+        try:
+            conditions = ["posted = 0"]
+            params = []
+            
+            if feed_urls:
+                url_conditions = ' OR '.join(['url LIKE ?' for _ in feed_urls])
+                conditions.append(f"({url_conditions})")
+                params.extend([f"%{url}%" for url in feed_urls])
+            
+            if category:
+                conditions.append("category = ?")
+                params.append(category)
+            
+            query = f"""
+            SELECT id, title, url, source, category, published_date
+            FROM {self.table_name} 
+            WHERE {' AND '.join(conditions)}
+            ORDER BY published_date ASC
+            """
+            
+            results = self.cursor.execute(query, params).fetchall()
+            
+            return [
+                {
+                    'id': row['id'],
+                    'title': row['title'],
+                    'url': row['url'],
+                    'source': row['source'],
+                    'category': row['category'],
+                    'published_date': row['published_date']
+                }
+                for row in results
+            ]
+        except sqlite3.Error as e:
+            print(f"Error getting unposted news: {e}")
+            return []
+
+    def mark_news_posted(self, news_ids: list) -> bool:
+        """
+        Mark news items as posted by their IDs.
+        
+        Args:
+            news_ids: A list of IDs of the news items to mark as posted
         Returns:
             bool: True if successfully marked, False otherwise
         """
         try:
-            update_sql = "UPDATE News SET posted = 1 WHERE id = ?"
-            self.cursor.execute(update_sql, (news_id,))
+            update_sql = "UPDATE News SET posted = 1 WHERE id IN ({})".format(','.join('?' * len(news_ids)))
+            self.cursor.execute(update_sql, news_ids)
             self.conn.commit()
-            
-            # Check if any rows were affected
-            return self.cursor.rowcount > 0
+            return True,'OK'
         except sqlite3.Error as e:
-            print(f"Error marking news as posted: {e}")
+            return False, str(e)
+    
+    def insert_news_item(self, title: str, url: str, source: str, category: str, published_date: str) -> tuple:
+        """
+        Insert a new news item into the database.
+        
+        Args:
+            title: The title of the news item
+            url: The URL of the news item (must be unique)
+            source: The source of the news item
+            category: The category of the news item
+            published_date: The published date of the news item (ISO format)
+            
+        Returns:
+            bool: True if successfully inserted, False otherwise
+        """
+        try:
+            insert_sql = """
+            INSERT INTO News (title, url, source, category, published_date)
+            VALUES (?, ?, ?, ?, ?)
+            """
+            self.cursor.execute(insert_sql, (title, url, source, category, published_date))
+            self.conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            print(f"News item with URL '{url}' already exists in database")
+            return False
+        except sqlite3.Error as e:
+            print(f"Error inserting news item: {e}")
             return False
