@@ -52,10 +52,18 @@ Perchè l'osservazione non basta? Perchè da sola non ci dà spiegazioni, ma sol
 
 Quindi per andare oltre la semplice descrizione, dobbiamo formulare un'ipotesi, ossia una spiegazione provvisoria del fenomeno osservato che possa essere testata. In termini più rigorosi, un'ipotesi è la creazione di un modello concettuale o matematico che cerca di spiegare le osservazioni fatte.
 Questa fase è la più creativa del metodo scientifico, poiché richiede immaginazione e intuizione per formulare possibili spiegazioni.
-Questo non significa che l'ipotesi debba essere "giusta" o "vera", ma deve essere formulata in modo tale da poter essere testata e potenzialmente **falsificata** attraverso esperimenti.
+Importante notare che non è necessario che l'ipotesi sia "giusta" o "vera" (anzi), ma deve essere formulata in modo tale da poter essere testata e potenzialmente **falsificata** (parola più importante di tutto questo articolo) attraverso esperimenti.
+
 [Questa fase è la parte induttiva del metodo scientifico, dove si va dal particolare (osservazioni) al generale (ipotesi).]{.aside}
-Un'ipotesi deve essee Testabile e falsificabile attraverso esperimenti.
-Facciamo un esempio. Supponiamo di osservare che le piante crescono più velocemente quando esposte a una certa luce. Un'ipotesi potrebbe essere: "La luce blu stimola la crescita delle piante più della luce rossa". Questa ipotesi può essere testata attraverso esperimenti controllati.
+
+Quindi ricapitoliamo: non basta osservare, bisogna lavorare di fantasia e fare delle ipotesi e queste ipotesi devono essere testabile.
+
+Facciamo un esempio. Supponiamo di osservare che in casa le piante in soggiorno crescono più velocemente di quelle nella camera da letto. Ecco due ipotesi che si potrebbero fare: 
+
+ 1. La temperatura del soggiorno incentiva la crescita delle piante.
+ 2. La camera da letto è più vicina alla casa dei vicini e la loro gelosia per le mie piante non le fa crescere.
+
+A te capire quale ipotesi è quella falsificabile. 
 
 ### 3.3 Esperimento e raccolta dati
 L'esperimento deve essere:
