@@ -886,10 +886,10 @@ class NewsDatabase(ContentDatabase):
             """
             self.cursor.execute(insert_sql, (title, url, source, category, published_date))
             self.conn.commit()
-            return True
+            return True, 'OK'
         except sqlite3.IntegrityError:
-            print(f"News item with URL '{url}' already exists in database")
-            return False
+            msg=f"News item with URL '{url}' already exists in database"
+            return False, msg
         except sqlite3.Error as e:
-            print(f"Error inserting news item: {e}")
-            return False
+            msg=f"Error inserting news item: {e}"
+            return False, msg

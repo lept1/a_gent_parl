@@ -34,12 +34,16 @@ class YouTubeInterface:
         Returns:
             dict: API response with top videos data
         """
-        request = self.youtube.videos().list(
-            part="contentDetails,statistics,snippet",
-            chart="mostPopular",
-            regionCode=country_code,
-            maxResults=max_results
-        )
-        response = request.execute()
+        try:
+            request = self.youtube.videos().list(
+                part="contentDetails,statistics,snippet",
+                chart="mostPopular",
+                regionCode=country_code,
+                maxResults=max_results
+            )
+            response = request.execute()
+        except Exception as e:
+            print(f"Error fetching top videos for {country_code}: {e}")
+            response = {}
         return response
     
