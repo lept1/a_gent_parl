@@ -7,7 +7,7 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 import random
 
 class WikipediaInterface:
-    def __init__(self, user_agent: str = None, rate_limit_delay: float = 1.0):
+    def __init__(self, user_agent: str = None, rate_limit_delay: float = 1.0, logger=None):
         """
         Initialize Wikipedia interface with independent configuration.
         
@@ -16,6 +16,7 @@ class WikipediaInterface:
                        or use sensible defaults
             rate_limit_delay: Delay between requests to respect rate limits
         """
+        self.logger = logger
         self.rate_limit_delay = rate_limit_delay
         self._last_request_time = 0
         
@@ -77,8 +78,11 @@ class WikipediaInterface:
         self._respect_rate_limit()
         api_url = f"{self.WIKI_API_URL_METRICS}/pageviews/top-per-country/{country_code}/all-access/{date}"
         response = requests.get(api_url, headers=self.headers)
-        if response.status_code != 200:
-            raise Exception(f"Error fetching data from Wikipedia API: {response.status_code}")
+        
+        # if response.status_code != 200:
+        #     response.raise_for_status()  # This will raise an HTTPError if the status is not 200
+
+
         return response.json()
 
     def dates_between_two_dates(self, start_date, end_date):
@@ -112,9 +116,10 @@ class WikipediaInterface:
             exclude_list = []
         start_date, end_date = self.get_start_and_end_dates_by_period(period)
         date_list = self.dates_between_two_dates(start_date, end_date)
-        top_articles = {}
-        for date in date_list:
-            for country in country_code:
+        top_articles_by_country = {}
+        for country in country_code:
+            top_articles={}
+            for date in date_list:
                 data = self.get_top_articles_by_country(country, date)
                 if 'items' in data and len(data['items']) > 0:
                     articles = self.get_top_articles_excluding(data['items'][0]['articles'], exclude_list)
@@ -123,10 +128,15 @@ class WikipediaInterface:
                             top_articles[art['article']] = art['views_ceil']
                         else:
                             top_articles[art['article']] += art['views_ceil']
-                else: 
-                    raise ValueError(f"No data available for {country} on {date}.")
-        sorted_top_articles = self.get_top_n_articles(top_articles, top_n)
-        return sorted_top_articles
+                else:
+                    self.logger.warning(f"No data for {country} on {date}") if self.logger else print(f"No data for {country} on {date}")
+                    # next iteration if no data for this date and country
+                    continue
+                
+                top_articles =self.get_top_n_articles(top_articles, top_n)
+                top_articles_by_country[country] = top_articles
+        
+        return top_articles_by_country
 
     
     def sparql_get_results(self, query):
@@ -189,14 +199,14 @@ class WikipediaInterface:
             pages = data['query']['pages']
             valid_extensions = ('jpg', 'jpeg', 'png')
             if 'images' not in list(random.choice(list(pages.values())).keys()):
-                print(f"No images found for {title} in {base_url_wiki}")
+                self.logger.warning(f"No images found for {title} in {base_url_wiki}") if self.logger else print(f"No images found for {title} in {base_url_wiki}")
                 return None
             if not any(img['title'].lower().endswith(valid_extensions) for img in random.choice(list(pages.values()))['images']):
-                print(f"No valid image found for {title} in {base_url_wiki}")
+                self.logger.warning(f"No valid image found for {title} in {base_url_wiki}") if self.logger else print(f"No valid image found for {title} in {base_url_wiki}")
                 return None
             img_title = random.choice([img for img in random.choice(list(pages.values()))['images'] if img['title'].lower().endswith(valid_extensions)])
             if not img_title:
-                print(f"No valid image found for {title} in {base_url_wiki}")
+                self.logger.warning(f"No valid image found for {title} in {base_url_wiki}") if self.logger else print(f"No valid image found for {title} in {base_url_wiki}")
                 return None
             #remove any word before ":" from the title in any language
             img_title_clean = img_title['title'].split(":")[-1].strip()
@@ -264,7 +274,7 @@ class WikipediaInterface:
                 return []
                 
         except requests.RequestException as e:
-            print(f"Error fetching category members for {category_name}: {e}")
+            self.logger.warning(f"Error fetching category members for {category_name}: {e}") if self.logger else print(f"Error fetching category members for {category_name}: {e}")
             return []
 
     def get_random_article_from_category(self, category_name, lang='en'):
@@ -286,7 +296,7 @@ class WikipediaInterface:
         members = self.get_category_members(category_name, lang, limit=100)
         
         if not members:
-            print(f"No members found in category {category_name}")
+            self.logger.warning(f"No members found in category {category_name}") if self.logger else print(f"No members found in category {category_name}")
             return None
         
         # Map language codes to Wikipedia base URLs
@@ -355,10 +365,10 @@ class WikipediaInterface:
                             members.remove(random_title)
                             
             except requests.RequestException as e:
-                print(f"Error fetching article {random_title}: {e}")
+                self.logger.warning(f"Error fetching article {random_title}: {e}") if self.logger else print(f"Error fetching article {random_title}: {e}")
                 continue
         
-        print(f"Could not find suitable article from category {category_name} after {max_attempts} attempts")
+        self.logger.warning(f"Could not find suitable article from category {category_name} after {max_attempts} attempts") if self.logger else print(f"Could not find suitable article from category {category_name} after {max_attempts} attempts")
         return None
 
     def get_article_content(self, article_title, lang='en'):
@@ -445,7 +455,7 @@ class WikipediaInterface:
                 
                 # Check if page exists
                 if 'missing' in summary_page or 'missing' in content_page:
-                    print(f"Article '{article_title}' not found")
+                    self.logger.warning(f"Article '{article_title}' not found") if self.logger else print(f"Article '{article_title}' not found")
                     return None
                 
                 summary = summary_page.get('extract', '')
@@ -459,9 +469,9 @@ class WikipediaInterface:
                     'length': len(content)
                 }
             else:
-                print(f"Invalid response structure for article '{article_title}'")
+                self.logger.warning(f"Invalid response structure for article '{article_title}'") if self.logger else print(f"Invalid response structure for article '{article_title}'")
                 return None
                 
         except requests.RequestException as e:
-            print(f"Error fetching content for article '{article_title}': {e}")
+            self.logger.warning(f"Error fetching content for article '{article_title}': {e}") if self.logger else print(f"Error fetching content for article '{article_title}': {e}")
             return None

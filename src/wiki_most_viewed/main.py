@@ -37,10 +37,10 @@ def main():
     top_articles_count = module_config.get('top_articles_count', 5)
     exclude_articles = module_config.get('exclude_articles', 'Main Page,Wikipedia')
     
-    country_list = [country_code]
+    #country_list = [country_code]
     
-    logger.info(f"📋 Configuration: Top {top_articles_count} trending articles from {country_code}, period=week")
-    logger.info(f"📊 Configuration loaded - Countries: {country_list}, Excluded pages: {len(exclude_articles)}")
+    #logger.info(f"📋 Configuration: Top {top_articles_count} trending articles from {country_code}, period=week")
+    logger.info(f"Configuration loaded - Countries: {country_code}, Excluded pages: {len(exclude_articles)}")
 
     try:
         # Phase 1: Setup and Configuration
@@ -57,92 +57,82 @@ def main():
         start_time = time.time()
         
         # Initialize Wikipedia interface (uses environment variables by default)
-        wiki_interface = WikipediaInterface()
-        logger.info("🔗 Wikipedia interface initialized")
+        wiki_interface = WikipediaInterface(logger=logger)
+        logger.info("Wikipedia interface initialized")
         
-        logger.info(f"🔍 Fetching top {top_articles_count} articles for countries: {country_list} over period: week")
-        top_articles = wiki_interface.get_top_n_articles_over_period(country_list, 'week', exclude_articles, top_n=top_articles_count)
+        logger.info(f"Fetching top {top_articles_count} articles for countries: {country_code} over period: week")
+        top_articles = wiki_interface.get_top_n_articles_over_period(country_code, 'week', exclude_articles, top_n=top_articles_count)
         
         fetch_duration = time.time() - start_time
-        logger.info(f"⏱️ Article fetching completed in {fetch_duration:.2f}s")
-        logger.info(f"📊 Performance: {len(top_articles)} articles retrieved, avg {fetch_duration/len(top_articles) if top_articles else 0:.2f}s per article")
+        logger.info(f"Article fetching completed in {fetch_duration:.2f}s")
+        logger.info(f"Performance: {len(top_articles)} articles retrieved, avg {fetch_duration/len(top_articles) if top_articles else 0:.2f}s per article")
         
-        # Log article details
-        for i, (article, views) in enumerate(top_articles.items(), 1):
-            logger.info(f"📄 Article {i}: '{article.replace('_', ' ')}' - {views:,} views")
+        # # Log article details
+        # for i, (article, views) in enumerate(top_articles.items(), 1):
+        #     logger.info(f"Article {i}: '{article.replace('_', ' ')}' - {views:,} views")
         
-        logger.info("✅ Data fetching phase completed")
+        logger.info("Data fetching phase completed")
 
         # Phase 3: Content Generation
-        logger.info("🤖 Starting content generation phase")
-        
-        # Prepare query for LLM
-        query = "These are the trending Wikipedia articles from last week:\n"
-        for article in top_articles:
-            query += f"titolo: {article.replace('_', ' ')}\n"
-            query += f"views: {top_articles[article]}\n\n"
-        
-        logger.info(f"📝 Query prepared - {len(query)} characters, {len(top_articles)} articles")
-        
+        logger.info("Starting content generation phase")
+
         # Initialize LLM interface (uses environment variables by default)
         llm_interface = LLMInterface()
-        logger.info("🔗 LLM interface initialized")
+        logger.info("LLM interface initialized")
         
-        generation_start = time.time()
-        logger.info("🎯 Generating Italian social media content for trending articles")
+        # Prepare query for LLM
+        for country, articles in top_articles.items():
+            query = "These are the trending Wikipedia articles from last week:\n"
+            query += f"Country: {country}\n"
+            for article, views in articles.items():
+                query += f"titolo: {article.replace('_', ' ')}\n"
+                query += f"views: {views}\n\n"
         
-        response = llm_interface.generate_text(SYSTEM_INSTRUCTION, query)
-        
-        generation_duration = time.time() - generation_start
-        logger.info(f"⏱️ Content generation completed in {generation_duration:.2f}s")
-        logger.info(f"📊 Performance: {len(response)} chars generated, {len(response)/generation_duration:.0f} chars/sec")
-        logger.info("✅ Content generation phase completed")
+            logger.info(f"Country {country}: Query prepared - {len(query)} characters, {len(articles)} articles")
+            generation_start = time.time()
+            logger.info("Generating Italian social media content for trending articles")
+            
+            response = llm_interface.generate_text(SYSTEM_INSTRUCTION, query)
+            
+            generation_duration = time.time() - generation_start
+            logger.info(f"Content generation completed in {generation_duration:.2f}s")
+            logger.info(f"Performance: {len(response)} chars generated, {len(response)/generation_duration:.0f} chars/sec")
+            logger.info("Content generation phase completed")
 
-        # Phase 4: Publication
-        logger.info("📤 Starting content publication phase")
-        
-        # Initialize Telegram interface with configuration
-        telegram_bot = TelegramInterface(
-            retry_attempts=telegram_config['retry_attempts'],
-            retry_delay=telegram_config['retry_delay']
-        )
-        logger.info("🔗 Telegram interface initialized")
-        
-        publication_start = time.time()
-        logger.info("📢 Publishing content to Telegram channel")
-        
-        telegram_bot.send_message(response)
-        
-        publication_duration = time.time() - publication_start
-        logger.info(f"⏱️ Publication completed in {publication_duration:.2f}s")
-        logger.info(f"📊 Performance: {len(response)} chars published in {publication_duration:.2f}s")
+            # Phase 4: Publication
+            logger.info("Starting content publication phase")
+            
+            # Initialize Telegram interface with configuration
+            telegram_bot = TelegramInterface(
+                retry_attempts=telegram_config['retry_attempts'],
+                retry_delay=telegram_config['retry_delay']
+            )
+            logger.info("Telegram interface initialized")
+            
+            publication_start = time.time()
+            logger.info("Publishing content to Telegram channel")
+            
+            telegram_bot.send_message(response)
+            
+            publication_duration = time.time() - publication_start
+            logger.info(f"Publication completed in {publication_duration:.2f}s")
+            logger.info(f"Performance: {len(response)} chars published in {publication_duration:.2f}s")
 
-        # Module completion
-        total_duration = time.time() - start_time
-        logger.info(f"🎉 weekly_most_viewed completed successfully in {total_duration:.2f}s")
-        logger.info(f"📊 Summary: {len(top_articles)} articles processed, {len(response)} chars generated and published")
+            # Module completion
+            total_duration = time.time() - start_time
+            logger.info(f"weekly_most_viewed completed successfully in {total_duration:.2f}s")
+            logger.info(f"Summary: {len(top_articles)} articles processed, {len(response)} chars generated and published")
         
     except Exception as e:
-        logger.error(f"❌ weekly_most_viewed failed: {str(e)}")
-        logger.error(f"🔍 Error type: {type(e).__name__}")
-        
-        # Provide context-specific error suggestions
-        if "wikipedia" in str(e).lower():
-            logger.error("💡 Suggestion: Check Wikipedia API connectivity and rate limits")
-        elif "llm" in str(e).lower() or "gemini" in str(e).lower():
-            logger.error("💡 Suggestion: Verify GEMINI_API_KEY and check API quota")
-        elif "telegram" in str(e).lower():
-            logger.error("💡 Suggestion: Verify TELEGRAM_BOT_TOKEN and CHANNEL_ID configuration")
-        else:
-            logger.error("💡 Suggestion: Check environment configuration and network connectivity")
-        
+        logger.error(f"weekly_most_viewed failed: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
         raise
 
 SYSTEM_INSTRUCTION = """
   You are an AI assistant specialized in summarizing news articles and generating content for social media in ITALIAN.
   Respond only with the final report, ready to be posted on Telegram, formatted as follows:
 
-    #WikipediaTrends <DATE> 📅
+    #WikipediaTrends <COUNTRY NAME> <COUNTRY FLAG EMOTICON> 
 
     <EMOTICON NUMBER 1> Article Title 1 <EMOTICON RELEVANT TO THE ARTICLE>
     <EMOTICON EYES> Views: X

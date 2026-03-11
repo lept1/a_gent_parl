@@ -35,7 +35,7 @@ class ConfigManager:
         self._project_root = self._find_project_root()
         self._config_path = Path(config_path) if config_path else self._project_root / "src" / "conf" / "config.ini"
         self._env_path = Path(env_path) if env_path else self._project_root / "src" / "conf" / ".env"
-        self._config = configparser.ConfigParser()
+        self._config = configparser.RawConfigParser()
         self._defaults = self._get_default_config()
         
         # Load configuration with error handling
@@ -137,7 +137,7 @@ class ConfigManager:
             if not self._config_path.exists():
                 self._create_default_config_file()
             
-            self._config.read(self._config_path)
+            self._config.read(self._config_path, encoding='utf-8')
             
             # Validate that all required sections exist
             self._validate_and_fix_config()
@@ -163,8 +163,8 @@ class ConfigManager:
                 for key, value in section_data.items():
                     config.set(section_name, key, str(value))
             
-            # Write the configuration file
-            with open(self._config_path, 'w') as config_file:
+            # Write the configuration file (UTF-8 to preserve special characters)
+            with open(self._config_path, 'w', encoding='utf-8') as config_file:
                 config.write(config_file)
             
             logging.info(f"Created default configuration file at {self._config_path}")
@@ -206,7 +206,7 @@ class ConfigManager:
         # Save the updated configuration if modified
         if config_modified:
             try:
-                with open(self._config_path, 'w') as config_file:
+                with open(self._config_path, 'w', encoding='utf-8') as config_file:
                     self._config.write(config_file)
                 logging.info("Updated configuration file with missing sections/keys")
             except (IOError, OSError) as e:
