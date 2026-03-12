@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "hooks": {
+    "pre-commit": {
+      "command": "python3 .github/scripts/smart_readme_update.py",
+      "description": "Analizza i cambiamenti e aggiorna il README se necessario"
+    }
+  }
+}
