@@ -23,7 +23,7 @@ def get_git_diff():
         # Usiamo '--staged' (sinonimo moderno di --cached) 
         # e forziamo l'esecuzione nella cartella corrente
         return subprocess.check_output(
-            ["git", "diff", "--staged"], 
+            ["git", "diff", "--name-only", "--cached"], 
             env=clean_env,
             cwd=os.getcwd(),
             stderr=subprocess.STDOUT
@@ -39,24 +39,32 @@ def main():
 
     # Usiamo la CLI di Copilot per decidere se il cambiamento è "significativo"
     # Il comando 'copilot chat' nel 2026 accetta input diretti per analisi veloci
-    prompt = f"Analizza questo diff e rispondi solo 'SI' se modifica le API, l'installazione o le feature principali, altrimenti 'NO':\n{diff}"
-    
-    significance = subprocess.check_output(["copilot", "-p", prompt]).decode("utf-8").strip()
+    prompt = f"In base a questi file modificati: {diff}, "\
+        "scrivi un breve paragrafo di aggiornamento per il README.md che descriva le novità. "\
+        "Sii sintetico."
 
-    if "SI" in significance.upper():
-        print("🚀 Cambiamento significativo rilevato. Aggiornamento README in corso...")
-        
-        # Chiediamo a Copilot di aggiornare il file
-        subprocess.run([
-            "copilot", "run", 
-            "Aggiorna il file README.md basandoti su questi cambiamenti nel codebase: " + diff,
-            "-y"
-        ])
-        
-        # Aggiungiamo il README aggiornato al commit corrente
-        subprocess.run(["git", "add", "README.md"])
-    else:
-        print("✅ Modifiche minori, il README rimane invariato.")
+    try:
+        # Usiamo un timeout per evitare che lo script resti appeso
+        result = subprocess.run(
+            ["copilot", "-p", prompt],
+            capture_output=True,
+            text=True,
+            env=os.environ,
+            timeout=30 # 30 secondi di tempo massimo
+        )
+
+        if result.returncode == 0:
+            # Invece di sovrascrivere tutto, appendiamo o aggiorniamo una sezione
+            with open("README.md", "a", encoding="utf-8") as f:
+                f.write(f"\n\n## Update 2026\n{result.stdout.strip()}\n")
+            
+            subprocess.run(["git", "add", "README.md"])
+            print("✅ README aggiornato (Append mode).")
+            
+    except subprocess.TimeoutExpired:
+        print("⚠️ Copilot ci sta mettendo troppo. Salto l'aggiornamento per non bloccare il commit.")
+    except Exception as e:
+        print(f"❌ Errore API: {e}")
 
 if __name__ == "__main__":
     main()
