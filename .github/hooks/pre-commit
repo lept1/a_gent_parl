@@ -1,0 +1,15 @@
+#!/bin/bash
+
+echo "Avvio aggiornamento automatico README..."
+
+# Esegue lo script Python
+py .github/scripts/smart_readme_update.py
+
+# Verifica se lo script Python ha avuto successo (exit code 0)
+if [ $? -ne 0 ]; then
+  echo "❌ Errore durante l'aggiornamento del README. Commit annullato."
+  exit 1
+fi
+
+# Aggiunge il README aggiornato allo stage prima di completare il commit
+git add README.md
