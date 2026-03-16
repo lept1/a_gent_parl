@@ -40,8 +40,8 @@ def main():
     # Usiamo la CLI di Copilot per decidere se il cambiamento è "significativo"
     # Il comando 'copilot chat' nel 2026 accetta input diretti per analisi veloci
     prompt = f"In base a questi file modificati: {diff}, "\
-        "scrivi un breve paragrafo di aggiornamento per il README.md che descriva le novità. "\
-        "Sii sintetico."
+        "Se necessario, ossia se i cambiamenti sono significativi, genera un breve aggiornamento da inserire nel README.md. "\
+        "Se i cambiamenti sono minori, restituisci una stringa vuota."
 
     try:
         # Usiamo un timeout per evitare che lo script resti appeso
