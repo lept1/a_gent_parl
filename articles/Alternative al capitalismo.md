@@ -1,3 +1,0 @@
-definizione 
-alternative
-critiche
