@@ -72,6 +72,16 @@ Esempi:
 
 ---
 
+## To do
+- timelines di wikipedia con infografica o post scritto
+- feed per comics/manga/anime/nerd 
+   -https://comicquarters.com/feed/
+   ...
+- viral finder. Non semplice
+- new music or trend music analyzer
+- aggregare il wiki most viewed in un unico articolo su base mondiale e non per singolo paese. eg estrarre dati per ogni paese --> sommare le Views totali di ogni paese per ogni articolo --> bisogna normalizzare le view in qualche modo --> estrarre gli N articoli su base mondiale --> generare un unico postino gli N articoli
+
+
 ## Contatti
 
 Mantieni il repository aggiornato con file di progetto e dati rinnovati.
