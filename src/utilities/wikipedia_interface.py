@@ -117,6 +117,8 @@ class WikipediaInterface:
         start_date, end_date = self.get_start_and_end_dates_by_period(period)
         date_list = self.dates_between_two_dates(start_date, end_date)
         top_articles_by_country = {}
+        if isinstance(country_code, str):
+            country_code = [country_code]
         for country in country_code:
             top_articles={}
             for date in date_list:
